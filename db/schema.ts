@@ -139,3 +139,129 @@ export const notifications = sqliteTable(
     ),
   ],
 );
+
+export const identityResults = sqliteTable("identity_results", {
+  memberId: integer("member_id").primaryKey(),
+  code: text("code").notNull(),
+  archetypeName: text("archetype_name").notNull(),
+  provisional: integer("provisional", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  confidence: integer("confidence").notNull().default(0),
+  axesJson: text("axes_json").notNull().default("[]"),
+  styleArchetype: text("style_archetype").notNull().default(""),
+  paletteJson: text("palette_json").notNull().default("{}"),
+  energyJson: text("energy_json").notNull().default("{}"),
+  incomeStreamsJson: text("income_streams_json").notNull().default("[]"),
+  brandStatement: text("brand_statement").notNull().default(""),
+  engineVersion: text("engine_version").notNull().default("2.0"),
+  computedAt: text("computed_at").notNull(),
+});
+
+export const memberBirthData = sqliteTable("member_birth_data", {
+  memberId: integer("member_id").primaryKey(),
+  fullBirthName: text("full_birth_name").notNull().default(""),
+  birthDate: text("birth_date").notNull().default(""),
+  birthTime: text("birth_time").notNull().default(""),
+  birthCity: text("birth_city").notNull().default(""),
+  sunSign: text("sun_sign").notNull().default(""),
+  moonSign: text("moon_sign").notNull().default(""),
+  risingSign: text("rising_sign").notNull().default(""),
+  ephemerisStatus: text("ephemeris_status")
+    .notNull()
+    .default("pending"),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const profileSections = sqliteTable(
+  "profile_sections",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    sectionKey: text("section_key").notNull(),
+    moduleKey: text("module_key").notNull(),
+    stage: text("stage").notNull(),
+    title: text("title").notNull(),
+    locked: integer("locked", { mode: "boolean" }).notNull().default(true),
+    contentJson: text("content_json").notNull().default("{}"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_profile_sections_member_section").on(
+      table.memberId,
+      table.sectionKey,
+    ),
+  ],
+);
+
+export const profileSynthesis = sqliteTable("profile_synthesis", {
+  memberId: integer("member_id").primaryKey(),
+  narrative: text("narrative").notNull().default(""),
+  reviewStatus: text("review_status").notNull().default("ai_generated"),
+  reviewedBy: text("reviewed_by").notNull().default(""),
+  reviewedAt: text("reviewed_at"),
+  shareEnabled: integer("share_enabled", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  shareToken: text("share_token").notNull().default(""),
+  generatedAt: text("generated_at").notNull(),
+});
+
+export const partnerMatches = sqliteTable(
+  "partner_matches",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    candidateId: integer("candidate_id").notNull(),
+    score: integer("score").notNull().default(0),
+    reasonJson: text("reason_json").notNull().default("{}"),
+    status: text("status").notNull().default("suggested"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_partner_matches_pair").on(
+      table.memberId,
+      table.candidateId,
+    ),
+    index("idx_partner_matches_member_score").on(
+      table.memberId,
+      table.score,
+    ),
+  ],
+);
+
+export const guideMessages = sqliteTable(
+  "guide_messages",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    role: text("role").notNull(),
+    body: text("body").notNull(),
+    groundedOnEngineVersion: text("grounded_on_engine_version")
+      .notNull()
+      .default("2.0"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("idx_guide_messages_member_created").on(
+      table.memberId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const nudgeLog = sqliteTable(
+  "nudge_log",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    nudgeType: text("nudge_type").notNull(),
+    channel: text("channel").notNull(),
+    sentAt: text("sent_at").notNull(),
+    openedAt: text("opened_at"),
+    convertedAt: text("converted_at"),
+  },
+  (table) => [
+    index("idx_nudge_log_member_sent").on(table.memberId, table.sentAt),
+  ],
+);

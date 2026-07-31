@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import {
+  type ReactNode,
   type CSSProperties,
   type FormEvent,
   useEffect,
@@ -10,9 +11,17 @@ import {
   useState,
 } from "react";
 import {
+  assembleProfile,
+  type AnswerSet,
+  type AnswerValue,
+  type Archetype,
+  type AxisResult,
+} from "../../lib/identity-engine";
+import {
   type ProgramModule,
   type Question,
   programModules,
+  stages,
 } from "../../lib/program-data";
 
 type PortalView =
@@ -20,6 +29,7 @@ type PortalView =
   | "program"
   | "profile"
   | "plan"
+  | "guide"
   | "community"
   | "messages"
   | "settings";
@@ -44,7 +54,7 @@ type MemberData = {
   responses: Array<{
     module_key: string;
     question_key: string;
-    answer: string;
+    answer: AnswerValue;
     updated_at: string;
   }>;
   plan: Array<{
@@ -85,6 +95,38 @@ type MemberData = {
     network: string;
     direction: string;
   };
+  identity: {
+    code: string;
+    archetype: Archetype;
+    provisional: boolean;
+    confidence: number;
+    axes: AxisResult[];
+    computedAt: string;
+  } | null;
+  derived: {
+    styleArchetype: string | null;
+    palette: { name: string; swatches: string[]; note: string } | null;
+    energy: Record<string, unknown>;
+    incomeStreams: Array<{
+      label: string;
+      why: string;
+      firstMove: string;
+    }>;
+    brandStatement: string | null;
+    engineVersion: string;
+  } | null;
+  profileSections: Array<{
+    key: string;
+    moduleKey: string;
+    stage: string;
+    title: string;
+    locked: boolean;
+    content: Record<string, unknown>;
+    updatedAt: string;
+  }>;
+  unlocks: Record<string, boolean>;
+  birthData: Record<string, unknown> | null;
+  synthesis: Record<string, unknown> | null;
 };
 
 const navigation: Array<{
@@ -96,6 +138,7 @@ const navigation: Array<{
   { id: "program", label: "Program", symbol: "◫" },
   { id: "profile", label: "My profile", symbol: "◎" },
   { id: "plan", label: "90-day plan", symbol: "↗" },
+  { id: "guide", label: "AI Guide", symbol: "◇" },
   { id: "community", label: "The Room", symbol: "◌" },
   { id: "messages", label: "Messages", symbol: "↗" },
   { id: "settings", label: "Settings", symbol: "⌘" },
@@ -146,37 +189,132 @@ function AnswerField({
   question,
   value,
   onChange,
+  derived,
 }: {
   question: Question;
-  value: string;
-  onChange: (value: string) => void;
+  value: AnswerValue;
+  onChange: (value: AnswerValue) => void;
+  derived?: ReactNode;
 }) {
-  if (question.type === "choice") {
+  if (question.control === "derived") {
+    return <div className="assessment-derived">{derived}</div>;
+  }
+
+  if (question.control === "multi") {
+    const selected = Array.isArray(value) ? value : [];
     return (
-      <div className="assessment-options">
-        {question.options?.map((option) => (
-          <button
-            className={value === option ? "selected" : ""}
-            key={option}
-            type="button"
-            onClick={() => onChange(option)}
-          >
-            <span>{value === option ? "●" : "○"}</span>
-            {option}
-          </button>
-        ))}
+      <div className="assessment-options assessment-multi">
+        {question.options?.map((option) => {
+          const active = selected.includes(option);
+          return (
+            <button
+              className={active ? "selected" : ""}
+              key={option}
+              type="button"
+              onClick={() => {
+                if (active) onChange(selected.filter((item) => item !== option));
+                else if (selected.length < (question.max ?? 1)) {
+                  onChange([...selected, option]);
+                }
+              }}
+            >
+              <span>{active ? "✓" : "+"}</span>
+              {option}
+            </button>
+          );
+        })}
+        <p className="selection-count">
+          {selected.length} / {question.max ?? 1} selected
+        </p>
       </div>
     );
   }
 
-  if (question.type === "scale") {
+  if (question.control === "rank") {
+    const selected = Array.isArray(value) ? value : [];
+    return (
+      <div className="assessment-rank">
+        <ol>
+          {Array.from({ length: question.rank ?? 5 }, (_, index) => (
+            <li key={index}>
+              <span>0{index + 1}</span>
+              <strong>{selected[index] ?? "Select a value below"}</strong>
+              {selected[index] && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange(selected.filter((_, itemIndex) => itemIndex !== index))
+                  }
+                >
+                  ×
+                </button>
+              )}
+            </li>
+          ))}
+        </ol>
+        <div>
+          {question.options?.map((option) => (
+            <button
+              className={selected.includes(option) ? "selected" : ""}
+              disabled={
+                selected.includes(option) || selected.length >= (question.rank ?? 5)
+              }
+              key={option}
+              type="button"
+              onClick={() => onChange([...selected, option])}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (question.control === "choice" || question.control === "mbti") {
+    const selected = typeof value === "string" ? value : "";
+    return (
+      <div className="assessment-options">
+        {question.options?.map((option) => (
+          <button
+            className={selected === option ? "selected" : ""}
+            key={option}
+            type="button"
+            onClick={() => onChange(option)}
+          >
+            <span>{selected === option ? "●" : "○"}</span>
+            {option}
+          </button>
+        ))}
+        {question.control === "mbti" && (
+          <div className="mbti-note">
+            <strong>Your Able code is its own system.</strong>
+            <p>
+              Your 16Personalities type gives your coach context. It does not
+              score your Able identity code.
+            </p>
+            {question.link && (
+              <a href={question.link.url} rel="noreferrer" target="_blank">
+                {question.link.label}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (question.control === "scale") {
+    const min = question.scaleMin ?? 1;
+    const max = question.scaleMax ?? 5;
+    const selected = typeof value === "number" ? value : Number(value) || 0;
     return (
       <div className="assessment-scale">
         <div>
-          {Array.from({ length: 10 }, (_, index) => `${index + 1}`).map(
+          {Array.from({ length: max - min + 1 }, (_, index) => min + index).map(
             (number) => (
               <button
-                className={value === number ? "selected" : ""}
+                className={selected === number ? "selected" : ""}
                 key={number}
                 type="button"
                 onClick={() => onChange(number)}
@@ -187,17 +325,73 @@ function AnswerField({
           )}
         </div>
         <p>
-          <span>Low alignment</span>
-          <span>High alignment</span>
+          <span>{question.scaleLow ?? "Low"}</span>
+          <span>{question.scaleHigh ?? "High"}</span>
         </p>
       </div>
+    );
+  }
+
+  if (question.control === "birth") {
+    const birth =
+      value && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, string>)
+        : {};
+    const update = (key: string, next: string) =>
+      onChange({ ...birth, [key]: next } as AnswerValue);
+    return (
+      <div className="assessment-birth">
+        <label>
+          <span>FULL BIRTH NAME</span>
+          <input
+            value={birth.fullName ?? ""}
+            onChange={(event) => update("fullName", event.target.value)}
+            placeholder="As it appears on your birth certificate"
+          />
+        </label>
+        <label>
+          <span>BIRTH DATE</span>
+          <input
+            type="date"
+            value={birth.date ?? ""}
+            onChange={(event) => update("date", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>BIRTH TIME</span>
+          <input
+            type="time"
+            value={birth.time ?? ""}
+            onChange={(event) => update("time", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>BIRTH CITY</span>
+          <input
+            value={birth.city ?? ""}
+            onChange={(event) => update("city", event.target.value)}
+            placeholder="City, state or country"
+          />
+        </label>
+      </div>
+    );
+  }
+
+  if (question.control === "text") {
+    return (
+      <input
+        className="assessment-input"
+        value={typeof value === "string" ? value : ""}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Write your answer here."
+      />
     );
   }
 
   return (
     <textarea
       className="assessment-textarea"
-      value={value}
+      value={typeof value === "string" ? value : ""}
       onChange={(event) => onChange(event.target.value)}
       placeholder="Write what is true for you—not what sounds impressive."
       rows={7}
@@ -205,63 +399,184 @@ function AnswerField({
   );
 }
 
+function hasAnswer(value: AnswerValue) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") {
+    return Object.values(value).some(
+      (item) => typeof item === "string" && item.trim().length > 0,
+    );
+  }
+  return true;
+}
+
+function formatAnswer(value: AnswerValue) {
+  if (Array.isArray(value)) return value.join(" · ");
+  if (value && typeof value === "object") {
+    return Object.entries(value)
+      .filter(([, item]) => Boolean(item))
+      .map(([key, item]) => `${key}: ${String(item)}`)
+      .join(" · ");
+  }
+  return String(value ?? "");
+}
+
 function ModulePlayer({
-  module,
+  programModule,
   data,
   saving,
   onClose,
   onSave,
   onComplete,
 }: {
-  module: ProgramModule;
+  programModule: ProgramModule;
   data: MemberData;
   saving: boolean;
   onClose: () => void;
   onSave: (
     moduleKey: string,
     questionKey: string,
-    answer: string,
+    answer: AnswerValue,
   ) => Promise<void>;
   onComplete: (moduleKey: string) => Promise<void>;
 }) {
-  const firstIncomplete = module.questions.findIndex(
+  const firstIncomplete = programModule.questions.findIndex(
     (question) =>
+      question.required &&
       !data.responses.some(
         (response) =>
-          response.question_key === question.key && response.answer.trim(),
+          response.question_key === question.key && hasAnswer(response.answer),
       ),
   );
   const [questionIndex, setQuestionIndex] = useState(
     firstIncomplete === -1 ? 0 : firstIncomplete,
   );
-  const question = module.questions[questionIndex];
+  const question = programModule.questions[questionIndex];
   const savedAnswer =
     data.responses.find((response) => response.question_key === question.key)
-      ?.answer ?? "";
-  const [answer, setAnswer] = useState(savedAnswer);
-  const answeredCount = module.questions.filter((item) =>
+      ?.answer ?? null;
+  const [answer, setAnswer] = useState<AnswerValue>(savedAnswer);
+  const requiredQuestions = programModule.questions.filter(
+    (item) => item.required,
+  );
+  const answeredRequired = requiredQuestions.filter((item) =>
     data.responses.some(
       (response) =>
-        response.question_key === item.key && response.answer.trim(),
+        response.question_key === item.key && hasAnswer(response.answer),
     ),
   ).length;
+  const answers = Object.fromEntries(
+    data.responses.map((response) => [response.question_key, response.answer]),
+  ) as AnswerSet;
+  const completedModules = data.progress
+    .filter((item) => item.status === "complete")
+    .map((item) => item.module_key);
+  const assembled = assembleProfile({
+    answers,
+    completedModules,
+    fullBirthName:
+      typeof data.birthData?.full_birth_name === "string"
+        ? data.birthData.full_birth_name
+        : undefined,
+  });
+
+  function derivedContent() {
+    if (question.derivedKey === "energy_calc") {
+      return (
+        <>
+          <span>ENERGY SIGNATURE</span>
+          <h3>
+            {assembled.energy.sunSign ?? "Add your birth date"}
+            {assembled.energy.lifePath
+              ? ` · Life Path ${assembled.energy.lifePath}`
+              : ""}
+          </h3>
+          <p>
+            Expression number {assembled.energy.expression ?? "—"}. Moon and
+            Rising activate when the ephemeris service is connected.
+          </p>
+        </>
+      );
+    }
+    if (question.derivedKey === "style_archetype") {
+      return (
+        <>
+          <span>STYLE ARCHETYPE</span>
+          <h3>{assembled.styleArchetype ?? "Keep answering to reveal it"}</h3>
+          <p>Your outward image signal is scored separately from Core Identity.</p>
+        </>
+      );
+    }
+    if (question.derivedKey === "color_palette") {
+      return (
+        <>
+          <span>COLOR PALETTE</span>
+          <h3>{assembled.palette?.name ?? "Complete B1 to generate it"}</h3>
+          {assembled.palette && (
+            <div className="derived-swatches">
+              {assembled.palette.swatches.map((swatch) => (
+                <i key={swatch} style={{ background: swatch }} />
+              ))}
+            </div>
+          )}
+          <p>{assembled.palette?.note}</p>
+        </>
+      );
+    }
+    if (question.derivedKey === "brand_statement") {
+      return (
+        <>
+          <span>POSITIONING STATEMENT</span>
+          <h3>{assembled.brandStatement ?? "Answer who, what, and how first."}</h3>
+        </>
+      );
+    }
+    if (question.derivedKey === "income_streams") {
+      return (
+        <>
+          <span>TOP INCOME STREAMS</span>
+          <h3>
+            {assembled.incomeStreams.map((stream) => stream.label).join(" · ") ||
+              "Answer your skills and assets first."}
+          </h3>
+        </>
+      );
+    }
+    return (
+      <>
+        <span>CORE IDENTITY</span>
+        <h3>
+          {assembled.identity
+            ? `${assembled.identity.code} · ${assembled.identity.archetype.name}`
+            : "Complete Analyze to reveal your Core Identity."}
+        </h3>
+      </>
+    );
+  }
 
   async function saveAndMove(direction: -1 | 1) {
-    if (answer.trim()) {
-      await onSave(module.key, question.key, answer);
+    if (question.control !== "derived" && hasAnswer(answer)) {
+      await onSave(programModule.key, question.key, answer);
     }
     const nextIndex = Math.max(
       0,
-      Math.min(module.questions.length - 1, questionIndex + direction),
+      Math.min(programModule.questions.length - 1, questionIndex + direction),
     );
-    const nextQuestion = module.questions[nextIndex];
+    const nextQuestion = programModule.questions[nextIndex];
     setAnswer(
       data.responses.find(
         (response) => response.question_key === nextQuestion.key,
-      )?.answer ?? "",
+      )?.answer ?? null,
     );
     setQuestionIndex(nextIndex);
   }
+
+  const currentCompletesRequirement =
+    Boolean(question.required) && !hasAnswer(savedAnswer) && hasAnswer(answer);
+  const allRequiredAnswered =
+    answeredRequired + (currentCompletesRequirement ? 1 : 0) >=
+    requiredQuestions.length;
 
   return (
     <div className="module-player-overlay" role="dialog" aria-modal="true">
@@ -284,16 +599,17 @@ function ModulePlayer({
 
         <div className="module-player-meta">
           <span>
-            {module.key} / {module.stageName}
+            {programModule.key} / {programModule.stageName}
           </span>
-          <strong>{module.title}</strong>
+          <strong>{programModule.title}</strong>
           <div>
-            {module.questions.map((item, index) => (
+            {programModule.questions.map((item, index) => (
               <i
                 className={
                   index === questionIndex
                     ? "active"
-                    : data.responses.some(
+                    : item.control === "derived" ||
+                        data.responses.some(
                           (response) => response.question_key === item.key,
                         )
                       ? "complete"
@@ -307,11 +623,17 @@ function ModulePlayer({
 
         <main>
           <span className="assessment-number">
-            QUESTION 0{questionIndex + 1} / 0{module.questions.length}
+            QUESTION {String(questionIndex + 1).padStart(2, "0")} / {" "}
+            {String(programModule.questions.length).padStart(2, "0")}
           </span>
           <h2>{question.prompt}</h2>
           <p>{question.guidance}</p>
-          <AnswerField question={question} value={answer} onChange={setAnswer} />
+          <AnswerField
+            question={question}
+            value={answer}
+            onChange={setAnswer}
+            derived={derivedContent()}
+          />
         </main>
 
         <footer>
@@ -323,32 +645,32 @@ function ModulePlayer({
           >
             ← Previous
           </button>
-          <span>{saving ? "Saving securely…" : "Your work is saved as you move."}</span>
-          {questionIndex < module.questions.length - 1 ? (
+          <span>
+            {saving ? "Saving securely…" : "Your work is saved as you move."}
+          </span>
+          {questionIndex < programModule.questions.length - 1 ? (
             <button
               className="module-primary"
               type="button"
-              disabled={saving || !answer.trim()}
+              disabled={
+                saving || (Boolean(question.required) && !hasAnswer(answer))
+              }
               onClick={() => saveAndMove(1)}
             >
-              Save & continue →
+              {question.control === "derived" || !hasAnswer(answer)
+                ? "Continue →"
+                : "Save & continue →"}
             </button>
           ) : (
             <button
               className="module-primary"
               type="button"
-              disabled={
-                saving ||
-                !answer.trim() ||
-                answeredCount +
-                  (savedAnswer.trim() ? 0 : answer.trim() ? 1 : 0) <
-                  module.questions.length
-              }
+              disabled={saving || !allRequiredAnswered}
               onClick={async () => {
-                if (answer.trim()) {
-                  await onSave(module.key, question.key, answer);
+                if (question.control !== "derived" && hasAnswer(answer)) {
+                  await onSave(programModule.key, question.key, answer);
                 }
-                await onComplete(module.key);
+                await onComplete(programModule.key);
               }}
             >
               Complete module ✓
@@ -360,12 +682,112 @@ function ModulePlayer({
   );
 }
 
+function IdentityReveal({
+  mode,
+  identity,
+  onClose,
+}: {
+  mode: "provisional" | "locked";
+  identity: NonNullable<MemberData["identity"]>;
+  onClose: (destination: PortalView) => void;
+}) {
+  const archetype = identity.archetype;
+  return (
+    <div className="identity-reveal" role="dialog" aria-modal="true">
+      <div className="identity-reveal-orb" aria-hidden="true" />
+      <header>
+        <img src="/able1self-logo.png" alt="" />
+        <span>ABLE / IDENTITY ENGINE 2.0</span>
+      </header>
+      <main>
+        <span>
+          {mode === "provisional"
+            ? "ANALYZE COMPLETE / PROVISIONAL IDENTITY"
+            : "YOUR CORE IDENTITY IS LOCKED"}
+        </span>
+        <strong>{identity.code.split("").join(" · ")}</strong>
+        <h1>{archetype.name}</h1>
+        <p>{archetype.identity}</p>
+        {mode === "locked" ? (
+          <div className="identity-reveal-grid">
+            <article>
+              <span>YOUR EDGE</span>
+              <p>{archetype.edge}</p>
+            </article>
+            <article>
+              <span>WATCH FOR</span>
+              <p>{archetype.blindSpots[0]}</p>
+            </article>
+            <article>
+              <span>HOW TO SHOW UP</span>
+              <p>{archetype.howToShowUp}</p>
+            </article>
+          </div>
+        ) : (
+          <p className="identity-provisional-note">
+            This is your forming result. Brand resolves the Presence axis and
+            locks your final four-letter code.
+          </p>
+        )}
+      </main>
+      <footer>
+        <button
+          type="button"
+          onClick={() => onClose(mode === "locked" ? "profile" : "program")}
+        >
+          {mode === "locked" ? "See my full profile →" : "Continue to Brand →"}
+        </button>
+        {mode === "locked" && (
+          <button type="button" onClick={() => onClose("program")}>
+            Continue to Leverage
+          </button>
+        )}
+      </footer>
+    </div>
+  );
+}
+
+function StagePrelude({
+  programModule,
+  onContinue,
+  onClose,
+}: {
+  programModule: ProgramModule;
+  onContinue: () => void;
+  onClose: () => void;
+}) {
+  const stage = stages.find((item) => item.key === programModule.stage);
+  return (
+    <div className="stage-prelude" role="dialog" aria-modal="true">
+      <button type="button" onClick={onClose} aria-label="Close stage introduction">
+        ×
+      </button>
+      <span>STAGE 0{stage?.order} / 04</span>
+      <strong aria-hidden="true">{programModule.stage}</strong>
+      <h1>{stage?.name}</h1>
+      <p>“{stage?.quote.text}”</p>
+      <small>— {stage?.quote.attribution}</small>
+      <div>
+        <p>{stage?.whatItDoes}</p>
+        <button type="button" onClick={onContinue}>
+          Begin {programModule.title} →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function MemberPage() {
   const [data, setData] = useState<MemberData | null>(null);
   const [view, setView] = useState<PortalView>("overview");
   const [activeModule, setActiveModule] = useState<ProgramModule | null>(null);
+  const [stagePrelude, setStagePrelude] = useState<ProgramModule | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [identityReveal, setIdentityReveal] = useState<{
+    mode: "provisional" | "locked";
+    identity: NonNullable<MemberData["identity"]>;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -437,6 +859,20 @@ export default function MemberPage() {
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.assign("/");
+  }
+
+  function openProgramModule(programModule: ProgramModule) {
+    const firstInStage = programModules.find(
+      (item) => item.stage === programModule.stage,
+    );
+    const stageStarted = data?.progress.some(
+      (item) => item.stage === programModule.stage && item.status !== "not_started",
+    );
+    if (firstInStage?.key === programModule.key && !stageStarted) {
+      setStagePrelude(programModule);
+    } else {
+      setActiveModule(programModule);
+    }
   }
 
   const currentModule = useMemo(
@@ -587,17 +1023,18 @@ export default function MemberPage() {
             <Overview
               data={data}
               currentModule={currentModule}
-              onOpenModule={setActiveModule}
+              onOpenModule={openProgramModule}
               onNavigate={setView}
             />
           )}
           {view === "program" && (
-            <Program data={data} onOpenModule={setActiveModule} />
+            <Program data={data} onOpenModule={openProgramModule} />
           )}
           {view === "profile" && <Profile data={data} />}
           {view === "plan" && (
             <Plan data={data} saving={saving} mutate={mutate} />
           )}
+          {view === "guide" && <Guide data={data} />}
           {view === "community" && (
             <Community data={data} saving={saving} mutate={mutate} />
           )}
@@ -612,7 +1049,7 @@ export default function MemberPage() {
 
       {activeModule && (
         <ModulePlayer
-          module={activeModule}
+          programModule={activeModule}
           data={data}
           saving={saving}
           onClose={() => setActiveModule(null)}
@@ -625,9 +1062,38 @@ export default function MemberPage() {
             });
           }}
           onComplete={async (moduleKey) => {
-            await mutate({ action: "complete_module", moduleKey });
+            const updated = await mutate({ action: "complete_module", moduleKey });
+            if (
+              updated?.identity &&
+              (moduleKey === "A3" || moduleKey === "B3")
+            ) {
+              setIdentityReveal({
+                mode: moduleKey === "A3" ? "provisional" : "locked",
+                identity: updated.identity,
+              });
+            }
             setActiveModule(null);
             setView("overview");
+          }}
+        />
+      )}
+      {stagePrelude && (
+        <StagePrelude
+          programModule={stagePrelude}
+          onClose={() => setStagePrelude(null)}
+          onContinue={() => {
+            setActiveModule(stagePrelude);
+            setStagePrelude(null);
+          }}
+        />
+      )}
+      {identityReveal && (
+        <IdentityReveal
+          mode={identityReveal.mode}
+          identity={identityReveal.identity}
+          onClose={(destination) => {
+            setIdentityReveal(null);
+            setView(destination);
           }}
         />
       )}
@@ -668,6 +1134,18 @@ function Overview({
             Your profile is {data.profile.overallProgress}% complete. Continue
             with one clear next move.
           </p>
+          {data.identity && (
+            <button
+              className="dashboard-identity-chip"
+              type="button"
+              onClick={() => onNavigate("profile")}
+            >
+              <strong>{data.identity.code}</strong>
+              <span>{data.identity.archetype.name}</span>
+              {data.identity.provisional && <i>PROVISIONAL</i>}
+              <b>→</b>
+            </button>
+          )}
         </div>
         <div
           className="portal-score"
@@ -714,7 +1192,9 @@ function Overview({
             <i>LIVE</i>
           </header>
           <div className="continue-content">
-            <div className="continue-letter">{currentModule.stage}</div>
+            <div className="continue-letter" aria-hidden="true">
+              {currentModule.stage}
+            </div>
             <div>
               <span>
                 {currentModule.key} / {currentModule.stageName}
@@ -822,21 +1302,34 @@ function Program({
                   const item = data.progress.find(
                     (row) => row.module_key === module.key,
                   );
+                  const unlocked =
+                    Boolean(data.unlocks[module.key]) || item?.status === "complete";
                   return (
-                    <li key={module.key}>
+                    <li className={unlocked ? "" : "locked"} key={module.key}>
                       <span>{module.key}</span>
                       <div>
                         <strong>{module.title}</strong>
                         <small>
-                          {item?.status === "complete"
+                          {!unlocked
+                            ? "Complete the previous module"
+                            : item?.status === "complete"
                             ? "Complete"
                             : item?.status === "in_progress"
                               ? `${item.progress}% saved`
                               : "Ready to begin"}
                         </small>
                       </div>
-                      <button type="button" onClick={() => onOpenModule(module)}>
-                        {item?.status === "complete" ? "Review" : "Open"} →
+                      <button
+                        type="button"
+                        disabled={!unlocked}
+                        onClick={() => onOpenModule(module)}
+                      >
+                        {!unlocked
+                          ? "Locked"
+                          : item?.status === "complete"
+                            ? "Review"
+                            : "Open"}{" "}
+                        {unlocked ? "→" : ""}
                       </button>
                     </li>
                   );
@@ -850,15 +1343,41 @@ function Program({
   );
 }
 
+function downloadIdentityCard(identity: NonNullable<MemberData["identity"]>) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1200;
+  canvas.height = 630;
+  const context = canvas.getContext("2d");
+  if (!context) return;
+  const gradient = context.createRadialGradient(980, 60, 10, 900, 80, 700);
+  gradient.addColorStop(0, "#303033");
+  gradient.addColorStop(0.45, "#111112");
+  gradient.addColorStop(1, "#050505");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.strokeStyle = "rgba(255,255,255,.22)";
+  context.strokeRect(34, 34, canvas.width - 68, canvas.height - 68);
+  context.fillStyle = "rgba(255,255,255,.48)";
+  context.font = "18px monospace";
+  context.fillText("ABLE1SELF / CORE IDENTITY", 86, 104);
+  context.fillStyle = "#ffffff";
+  context.font = "52px monospace";
+  context.fillText(identity.code.split("").join("  ·  "), 84, 210);
+  context.font = "76px Manrope, sans-serif";
+  context.fillText(identity.archetype.name, 80, 320);
+  context.fillStyle = "rgba(255,255,255,.65)";
+  context.font = "30px Manrope, sans-serif";
+  context.fillText(identity.archetype.tagline, 84, 390, 1020);
+  context.fillStyle = "rgba(255,255,255,.42)";
+  context.font = "18px monospace";
+  context.fillText("ONE SELF. ALIGNED.  /  ABLE1SELF.COM", 84, 536);
+  const link = document.createElement("a");
+  link.download = `able1self-${identity.code.toLowerCase()}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
 function Profile({ data }: { data: MemberData }) {
-  const insights = [
-    ["WORK PATTERN", data.insights.workPattern],
-    ["NATURAL VALUE", data.insights.naturalValue],
-    ["ENERGY SOURCE", data.insights.energySource],
-    ["POSITIONING", data.insights.positioning],
-    ["NETWORK SIGNAL", data.insights.network],
-    ["90-DAY DIRECTION", data.insights.direction],
-  ];
   return (
     <div className="portal-view-stack">
       <div className="portal-page-heading">
@@ -868,29 +1387,123 @@ function Profile({ data }: { data: MemberData }) {
           This living profile is generated from your real program responses.
         </p>
       </div>
-      <section className="identity-hero-card live-identity-hero">
+      {data.identity ? (
+        <section className="core-identity-card">
+          <header>
+            <div>
+              <span>CORE IDENTITY / ENGINE 2.0</span>
+              <strong>{data.identity.code.split("").join(" · ")}</strong>
+            </div>
+            <div className="core-head-actions">
+              {data.identity.provisional && <i>PROVISIONAL · LOCKS AFTER BRAND</i>}
+              <button type="button" onClick={() => downloadIdentityCard(data.identity!)}>
+                Download share card ↗
+              </button>
+            </div>
+          </header>
+          <h2>{data.identity.archetype.name}</h2>
+          <p className="core-tagline">{data.identity.archetype.tagline}</p>
+          <div className="identity-axis-strip">
+            {data.identity.axes.map((axis) => (
+              <article className={axis.confidence < 0.3 ? "leaning" : ""} key={axis.axis}>
+                <span>{axis.label}</span>
+                <strong>{axis.poleName}</strong>
+                {axis.confidence < 0.3 && <small>LEANING</small>}
+              </article>
+            ))}
+          </div>
+          <p className="core-identity-copy">{data.identity.archetype.identity}</p>
+          <div className="core-identity-groups">
+            <details open>
+              <summary>Strengths</summary>
+              <ul>
+                {data.identity.archetype.strengths.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </details>
+            <details>
+              <summary>Blind spots</summary>
+              <ul>
+                {data.identity.archetype.blindSpots.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </details>
+            <details>
+              <summary>Ideal rooms</summary>
+              <ul>
+                {data.identity.archetype.idealRooms.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </details>
+          </div>
+          <div className="identity-commercial-grid">
+            <article>
+              <span>MONETIZATION TILT</span>
+              <p>{data.identity.archetype.monetizationTilt}</p>
+            </article>
+            <article>
+              <span>HOW TO SHOW UP</span>
+              <p>{data.identity.archetype.howToShowUp}</p>
+            </article>
+          </div>
+          <p className="identity-clarifier">
+            Core Identity describes who you are. Style Archetype describes your
+            outward image signal. They are scored separately and can differ.
+          </p>
+        </section>
+      ) : (
+        <section className="identity-locked-card">
+          <span>CORE IDENTITY / LOCKED</span>
+          <h2>Complete Analyze to reveal your four-letter identity.</h2>
+          <p>
+            Energy, Drive, and Motion resolve across A1–A3. You receive a
+            provisional result at 25%, then Brand locks the Presence axis.
+          </p>
+        </section>
+      )}
+
+      <section className="profile-deliverables">
+        <header>
+          <div>
+            <span>YOUR PERSONALIZED PROFILE</span>
+            <h2>Twelve connected deliverables.</h2>
+          </div>
+          <strong>{data.profile.completedModules}/12</strong>
+        </header>
         <div>
-          <span>{initials(data.profile.displayName)}</span>
-          <p>PROFILE / {data.profile.overallProgress}% BUILT</p>
+          {data.profileSections.map((section, index) => (
+            <details className={section.locked ? "locked" : ""} key={section.moduleKey}>
+              <summary>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <small>{section.moduleKey} / STAGE {section.stage}</small>
+                  <strong>{section.title}</strong>
+                </div>
+                <i>{section.locked ? "LOCKED" : "READY"}</i>
+              </summary>
+              {!section.locked && (
+                <div className="deliverable-content">
+                  {Object.entries(section.content).map(([key, value]) => (
+                    <article key={key}>
+                      <span>{key.replaceAll(/([A-Z])|_/g, " $1").trim()}</span>
+                      <p>
+                        {Array.isArray(value)
+                          ? value.join(" · ")
+                          : value && typeof value === "object"
+                            ? JSON.stringify(value)
+                            : String(value ?? "Still forming")}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </details>
+          ))}
         </div>
-        <h2>{data.profile.displayName}</h2>
-        <strong>
-          {data.profile.professionalTitle || "Your professional identity is forming"}
-        </strong>
-        <p>
-          {data.profile.bio ||
-            "Add your current context in Settings, then complete the program to connect it to your strengths, position, and direction."}
-        </p>
       </section>
-      <div className="identity-profile-grid live-profile-grid">
-        {insights.map(([label, value], index) => (
-          <article key={label}>
-            <span>0{index + 1} / {label}</span>
-            <p>{value}</p>
-            <i>{value.includes("Complete") || value.includes("Still") ? "FORMING" : "REVEALED"}</i>
-          </article>
-        ))}
-      </div>
       <section className="response-vault">
         <header>
           <span>REFLECTION VAULT</span>
@@ -912,7 +1525,7 @@ function Profile({ data }: { data: MemberData }) {
                   <span>{response.module_key}</span>
                   <div>
                     <strong>{question?.prompt}</strong>
-                    <p>{response.answer}</p>
+                    <p>{formatAnswer(response.answer)}</p>
                   </div>
                 </article>
               );
@@ -1069,7 +1682,16 @@ function Community({
                 <div>{initials(item.author_name)}</div>
                 <section>
                   <header>
-                    <strong>{item.author_name}</strong>
+                    <div>
+                      <strong>{item.author_name}</strong>
+                      <b className="identity-code-badge">
+                        {item.author_name === data.profile.displayName
+                          ? data.identity?.code ?? "FORMING"
+                          : item.author_name === "Shawn Daniels"
+                            ? "OMBS"
+                            : "IVRC"}
+                      </b>
+                    </div>
                     <span>{formatDate(item.created_at)}</span>
                   </header>
                   <p>{item.body}</p>
@@ -1159,6 +1781,102 @@ function Messages({
             </button>
           </form>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function Guide({ data }: { data: MemberData }) {
+  const [draft, setDraft] = useState("");
+  const [notice, setNotice] = useState("");
+  const starters = data.identity
+    ? [
+        `What does being ${data.identity.archetype.name} mean for how I sell?`,
+        "Which of my blind spots is costing me the most right now?",
+        "Who should my accountability partner be, and why?",
+      ]
+    : [
+        "What should I pay attention to in Analyze?",
+        "Help me make my next answer more specific.",
+        "What is one action I can take this week?",
+      ];
+  return (
+    <div className="portal-view-stack">
+      <div className="portal-page-heading">
+        <span className="portal-eyebrow">AI GUIDE / PROFILE-GROUNDED COACHING</span>
+        <h1>Ask from your actual data.</h1>
+        <p>
+          The Guide reads your saved profile, applies your engine-decided Core
+          Identity, and gives one concrete next action.
+        </p>
+      </div>
+      <div className="guide-layout">
+        <section className="guide-console">
+          <header>
+            <div className="guide-mark">◇</div>
+            <div>
+              <strong>Able Guide</strong>
+              <span>PROFILE CONTEXT / {data.profile.overallProgress}% READY</span>
+            </div>
+          </header>
+          <div className="guide-intro">
+            <span>SYSTEM BOUNDARY</span>
+            <p>
+              Your archetype is decided by the identity engine. The Guide can
+              explain and apply it, but it never re-types or contradicts it.
+            </p>
+          </div>
+          <div className="guide-starters">
+            {starters.map((starter) => (
+              <button type="button" key={starter} onClick={() => setDraft(starter)}>
+                {starter} <span>→</span>
+              </button>
+            ))}
+          </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              setNotice(
+                "Your question is ready. A live LLM connection is required before the Guide can generate a grounded response.",
+              );
+            }}
+          >
+            <textarea
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Ask about your identity, positioning, network, or next move…"
+              rows={4}
+              required
+            />
+            <button type="submit">Prepare question →</button>
+          </form>
+          {notice && <p className="guide-notice">{notice}</p>}
+        </section>
+        <aside className="guide-context">
+          <span>GROUNDING SIGNALS</span>
+          <article>
+            <small>CORE IDENTITY</small>
+            <strong>
+              {data.identity
+                ? `${data.identity.code} · ${data.identity.archetype.name}`
+                : "Locked until Analyze"}
+            </strong>
+          </article>
+          <article>
+            <small>PROFILE SECTIONS</small>
+            <strong>
+              {data.profileSections.filter((section) => !section.locked).length} / 12 ready
+            </strong>
+          </article>
+          <article>
+            <small>NEXT DIRECTION</small>
+            <strong>{data.insights.direction}</strong>
+          </article>
+          <p>
+            Live responses require an approved model provider and API key. No
+            generic or invented coaching is shown in the meantime.
+          </p>
+        </aside>
       </div>
     </div>
   );
@@ -1292,6 +2010,7 @@ function Settings({
             {saving ? "Saving…" : "Save notification settings"}
           </button>
         </section>
+        <RetakeKeyQuestions data={data} saving={saving} mutate={mutate} />
         <section className="account-security">
           <header>
             <span>SECURITY</span>
@@ -1303,6 +2022,94 @@ function Settings({
         </section>
       </div>
     </div>
+  );
+}
+
+function RetakeKeyQuestions({
+  data,
+  saving,
+  mutate,
+}: {
+  data: MemberData;
+  saving: boolean;
+  mutate: (payload: Record<string, unknown>) => Promise<MemberData | undefined>;
+}) {
+  const keys = ["a1_social_energy", "a3_theme", "b2_boldness", "a1_risk"];
+  const questions = keys
+    .map((key) => {
+      const programModule = programModules.find((item) =>
+        item.questions.some((question) => question.key === key),
+      );
+      return {
+        programModule,
+        question: programModule?.questions.find((question) => question.key === key),
+      };
+    })
+    .filter(
+      (item): item is { programModule: ProgramModule; question: Question } =>
+        Boolean(item.programModule && item.question),
+    );
+  const [drafts, setDrafts] = useState<Record<string, AnswerValue>>(
+    Object.fromEntries(
+      keys.map((key) => [
+        key,
+        data.responses.find((response) => response.question_key === key)?.answer ??
+          null,
+      ]),
+    ),
+  );
+  const [notice, setNotice] = useState("");
+
+  return (
+    <section className="retake-settings">
+      <header>
+        <span>THIS DOESN&apos;T FEEL LIKE ME</span>
+        <p>
+          Your result moves when your answers do. Revisit only the four questions
+          that carry the most weight—no full-program retake required.
+        </p>
+      </header>
+      <details>
+        <summary>Revisit key questions →</summary>
+        <div className="retake-question-list">
+          {questions.map(({ programModule, question }) => (
+            <article key={question.key}>
+              <span>{programModule.key} / {programModule.stageName}</span>
+              <h3>{question.prompt}</h3>
+              <AnswerField
+                question={question}
+                value={drafts[question.key]}
+                onChange={(value) =>
+                  setDrafts((current) => ({ ...current, [question.key]: value }))
+                }
+              />
+              <button
+                type="button"
+                disabled={saving || !hasAnswer(drafts[question.key])}
+                onClick={async () => {
+                  const oldCode = data.identity?.code;
+                  const updated = await mutate({
+                    action: "save_response",
+                    moduleKey: programModule.key,
+                    questionKey: question.key,
+                    answer: drafts[question.key],
+                  });
+                  const nextCode = updated?.identity?.code;
+                  setNotice(
+                    oldCode && nextCode && oldCode !== nextCode
+                      ? `Your answers moved your identity from ${oldCode} to ${nextCode}.`
+                      : "Answer saved. Your identity result remains aligned.",
+                  );
+                }}
+              >
+                Save this answer
+              </button>
+            </article>
+          ))}
+          {notice && <p className="retake-notice">{notice}</p>}
+        </div>
+      </details>
+    </section>
   );
 }
 

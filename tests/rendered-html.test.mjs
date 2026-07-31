@@ -189,13 +189,28 @@ test("forgot-password endpoint accepts a valid reset request", async () => {
   assert.equal((await response.json()).ok, true);
 });
 
-test("ships a protected, persistent member workspace and D1 schema", async () => {
-  const [memberPage, store, schema, migration, hosting] = await Promise.all([
+test("ships the complete portal engine, persistent results, and D1 schema", async () => {
+  const [
+    memberPage,
+    store,
+    programData,
+    identityEngine,
+    schema,
+    baseMigration,
+    engineMigration,
+    hosting,
+  ] = await Promise.all([
     readFile(new URL("../app/member/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/member-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/program-data.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/identity-engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(
       new URL("../drizzle/0000_jittery_red_hulk.sql", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../drizzle/0001_dazzling_ikaris.sql", import.meta.url),
       "utf8",
     ),
     readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
@@ -208,9 +223,24 @@ test("ships a protected, persistent member workspace and D1 schema", async () =>
   assert.match(memberPage, /ACCOUNTABILITY/);
   assert.match(memberPage, /save_response/);
   assert.match(memberPage, /complete_module/);
+  assert.match(memberPage, /CORE IDENTITY/);
+  assert.match(memberPage, /AI GUIDE/);
+  assert.match(memberPage, /Revisit key questions/);
+  assert.equal(
+    (programData.match(/scoring: "(?:SCORED|FLAVOR|DERIVED)"/g) ?? []).length,
+    72,
+  );
+  assert.match(programData, /title: "Define Your Image"/);
+  assert.match(identityEngine, /export const ARCHETYPES/);
+  assert.match(identityEngine, /export function assembleProfile/);
   assert.match(store, /ON CONFLICT\(member_id, question_key\)/);
+  assert.match(store, /persistAssembledProfile/);
   assert.match(store, /mark_notifications_read/);
   assert.match(schema, /surveyResponses/);
-  assert.match(migration, /CREATE TABLE `survey_responses`/);
+  assert.match(schema, /identityResults/);
+  assert.match(schema, /profileSections/);
+  assert.match(baseMigration, /CREATE TABLE `survey_responses`/);
+  assert.match(engineMigration, /CREATE TABLE `identity_results`/);
+  assert.match(engineMigration, /CREATE TABLE `profile_sections`/);
   assert.equal(JSON.parse(hosting).d1, "DB");
 });
