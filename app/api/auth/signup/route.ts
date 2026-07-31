@@ -1,7 +1,20 @@
 import { createSessionCookie } from "../../../../lib/auth-session";
+import { configuredPreviewAccounts } from "../../../../lib/auth-accounts";
+import { getRuntimeEnv } from "../../../../lib/runtime";
 import { signUpWithSupabase } from "../../../../lib/supabase-auth";
 
 export async function POST(request: Request) {
+  const runtime = getRuntimeEnv() ?? {};
+  if (configuredPreviewAccounts(runtime).length > 0) {
+    return Response.json(
+      {
+        ok: false,
+        error: "Member access is invite-only during the pilot.",
+      },
+      { status: 403 },
+    );
+  }
+
   const payload = (await request.json()) as {
     email?: string;
     password?: string;
@@ -60,4 +73,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

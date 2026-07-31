@@ -14,11 +14,11 @@ function runtimeEnv() {
     ASSETS: {
       fetch: async () => new Response("Not found", { status: 404 }),
     },
-    DEMO_LOGIN_EMAIL: "amechi@addcoloremdia.com",
+    DEMO_LOGIN_EMAIL: "amechi@addcolormedia.com",
     DEMO_LOGIN_PASSWORD: "test-preview-password",
     PREVIEW_ACCOUNTS_JSON: JSON.stringify([
       {
-        email: "amechi@addcoloremdia.com",
+        email: "amechi@addcolormedia.com",
         password: "test-preview-password",
         name: "Amechi",
       },
@@ -78,7 +78,7 @@ test("server-renders the finished Able1Self experience and metadata", async () =
   assert.match(html, /Personalized Identity Profile/);
   assert.match(html, /The Room/);
   assert.match(html, /Shawn Daniels/);
-  assert.match(html, /Log in/);
+  assert.match(html, /Member login/);
   assert.match(html, /able1self-logo\.png/);
   assert.match(html, /The transformation/);
   assert.match(html, /Starter/);
@@ -147,7 +147,7 @@ test("accepts every configured preview account and rejects invalid credentials",
     });
 
   const accepted = await worker.fetch(
-    request("amechi@addcoloremdia.com", "test-preview-password"),
+    request("amechi@addcolormedia.com", "test-preview-password"),
     runtimeEnv(),
     executionContext(),
   );
@@ -168,7 +168,7 @@ test("accepts every configured preview account and rejects invalid credentials",
   assert.equal(session.status, 200);
   const sessionData = await session.json();
   assert.equal(sessionData.authenticated, true);
-  assert.equal(sessionData.user.email, "amechi@addcoloremdia.com");
+  assert.equal(sessionData.user.email, "amechi@addcolormedia.com");
 
   for (const [email, name] of [
     ["shawndaniels2015@gmail.com", "Shawn Daniels"],
@@ -197,12 +197,20 @@ test("accepts every configured preview account and rejects invalid credentials",
   assert.match(logout.headers.get("set-cookie") ?? "", /Max-Age=0/i);
 
   const rejected = await worker.fetch(
-    request("amechi@addcoloremdia.com", "incorrect"),
+    request("amechi@addcolormedia.com", "incorrect"),
     runtimeEnv(),
     executionContext(),
   );
   assert.equal(rejected.status, 401);
   assert.equal((await rejected.json()).ok, false);
+
+  const outsider = await worker.fetch(
+    request("outsider@example.com", "test-preview-password"),
+    runtimeEnv(),
+    executionContext(),
+  );
+  assert.equal(outsider.status, 401);
+  assert.equal((await outsider.json()).ok, false);
 });
 
 test("forgot-password endpoint accepts a valid reset request", async () => {
@@ -211,7 +219,7 @@ test("forgot-password endpoint accepts a valid reset request", async () => {
     new Request("https://able1self.example/api/auth/forgot-password", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "amechi@addcoloremdia.com" }),
+      body: JSON.stringify({ email: "amechi@addcolormedia.com" }),
     }),
     runtimeEnv(),
     executionContext(),

@@ -106,7 +106,7 @@ export function AuthModal({
         <div className="auth-copy">
           <span className="auth-kicker">
             {mode === "login"
-              ? "MEMBER ACCESS"
+              ? "PILOT MEMBER ACCESS"
               : mode === "signup"
                 ? "CREATE YOUR ACCOUNT"
                 : "ACCOUNT RECOVERY"}
@@ -120,7 +120,7 @@ export function AuthModal({
           </h2>
           <p>
             {mode === "login"
-              ? "Return to your profile, program progress, community, and next action."
+              ? "Return to your profile, program progress, community, and next action. Access is limited to approved pilot members."
               : mode === "signup"
                 ? "Create a secure member profile. Your answers and progress will stay connected to this account."
                 : "Enter your account email. We’ll send a secure reset link."}
@@ -203,16 +203,9 @@ export function AuthModal({
         </form>
 
         {mode === "login" && (
-          <button
-            className="auth-return auth-create"
-            type="button"
-            onClick={() => {
-              setMode("signup");
-              setMessage("");
-            }}
-          >
-            New to Able1Self? Create an account →
-          </button>
+          <p className="auth-return auth-create">
+            New member access opens after enrollment.
+          </p>
         )}
 
         {mode !== "login" && (

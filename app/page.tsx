@@ -448,7 +448,7 @@ export default function Home() {
               openMemberAccess();
             }}
           >
-            {memberEmail ? "Dashboard" : "Log in"}
+            {memberEmail ? "Member dashboard" : "Member login"}
           </button>
         </nav>
         <a className="nav-cta" href="#access">
@@ -928,7 +928,7 @@ export default function Home() {
             <a href="#founder">Shawn Daniels</a>
             <a href="#faq">FAQ</a>
             <button type="button" onClick={openMemberAccess}>
-              {memberEmail ? "Open dashboard" : "Log in"}
+              {memberEmail ? "Open dashboard" : "Member login"}
             </button>
           </div>
           <div>

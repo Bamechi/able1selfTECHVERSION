@@ -36,10 +36,9 @@ export async function POST(request: Request) {
 
   try {
     let account: { email: string; name: string } | undefined;
-    if (isSupabaseConfigured()) {
-      account = await signInWithSupabase(email, password);
-    } else {
-      const preview = configuredPreviewAccounts(runtime).find((candidate) =>
+    const pilotAccounts = configuredPreviewAccounts(runtime);
+    if (pilotAccounts.length > 0) {
+      const preview = pilotAccounts.find((candidate) =>
         constantTimeEqual(candidate.email, email),
       );
       if (!preview || !constantTimeEqual(preview.password, password)) {
@@ -49,6 +48,13 @@ export async function POST(request: Request) {
         );
       }
       account = { email: preview.email, name: preview.name };
+    } else if (isSupabaseConfigured()) {
+      account = await signInWithSupabase(email, password);
+    } else {
+      return Response.json(
+        { ok: false, error: "Member access is not configured yet." },
+        { status: 503 },
+      );
     }
 
     const cookie = await createSessionCookie(

@@ -2224,6 +2224,16 @@ footer {
     font-size: 22px;
   }
 
+  .site-header nav.open .nav-login {
+    min-height: 50px;
+    padding: 0 22px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--ink);
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+
   .menu-toggle.open {
     position: fixed;
     top: 22px;
@@ -4660,8 +4670,9 @@ footer {
   .site-header nav .nav-login {
     min-height: 48px;
     padding: 0 20px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--line);
     border-radius: 11px;
+    color: var(--ink);
     text-align: left;
   }
 

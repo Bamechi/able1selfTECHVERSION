@@ -47,7 +47,7 @@ export function configuredPreviewAccounts(runtime: AbleRuntimeEnv = {}) {
     accounts.push({
       email: legacyEmail,
       password: legacyPassword,
-      name: legacyEmail === "amechi@addcoloremdia.com"
+      name: legacyEmail === "amechi@addcolormedia.com"
         ? "Amechi"
         : displayNameFromEmail(legacyEmail),
     });
@@ -62,4 +62,3 @@ export function previewAccountForEmail(runtime: AbleRuntimeEnv, email: string) {
     (account) => account.email === normalized,
   );
 }
-
