@@ -16,6 +16,7 @@ function runtimeEnv() {
     },
     DEMO_LOGIN_EMAIL: "amechi@addcoloremdia.com",
     DEMO_LOGIN_PASSWORD: "test-preview-password",
+    AUTH_SESSION_SECRET: "test-session-secret-with-at-least-32-characters",
   };
 }
 
@@ -91,7 +92,8 @@ test("ships the app-like system, real founder image, and accessible fallbacks", 
   assert.match(page, /IntroSequence/);
   assert.match(page, /3200/);
   assert.match(page, /useState<Audience>/);
-  assert.match(page, /able1self-preview-session/);
+  assert.match(page, /\/api\/auth\/session/);
+  assert.match(page, /window\.location\.assign\("\/member"\)/);
   assert.match(memberExperience, /Forgot password\?/);
   assert.match(memberExperience, /The ABLE Program/);
   assert.match(memberExperience, /Personalized Identity Profile/i);
@@ -134,6 +136,33 @@ test("accepts the configured preview account and rejects invalid credentials", a
   );
   assert.equal(accepted.status, 200);
   assert.equal((await accepted.json()).ok, true);
+  const setCookie = accepted.headers.get("set-cookie") ?? "";
+  assert.match(setCookie, /able1self_session=/);
+  assert.match(setCookie, /HttpOnly/i);
+  assert.match(setCookie, /SameSite=Lax/i);
+
+  const session = await worker.fetch(
+    new Request("https://able1self.example/api/auth/session", {
+      headers: { cookie: setCookie.split(";")[0] },
+    }),
+    runtimeEnv(),
+    executionContext(),
+  );
+  assert.equal(session.status, 200);
+  const sessionData = await session.json();
+  assert.equal(sessionData.authenticated, true);
+  assert.equal(sessionData.user.email, "amechi@addcoloremdia.com");
+
+  const logout = await worker.fetch(
+    new Request("https://able1self.example/api/auth/logout", {
+      method: "POST",
+      headers: { cookie: setCookie.split(";")[0] },
+    }),
+    runtimeEnv(),
+    executionContext(),
+  );
+  assert.equal(logout.status, 200);
+  assert.match(logout.headers.get("set-cookie") ?? "", /Max-Age=0/i);
 
   const rejected = await worker.fetch(
     request("incorrect"),
@@ -158,4 +187,30 @@ test("forgot-password endpoint accepts a valid reset request", async () => {
 
   assert.equal(response.status, 200);
   assert.equal((await response.json()).ok, true);
+});
+
+test("ships a protected, persistent member workspace and D1 schema", async () => {
+  const [memberPage, store, schema, migration, hosting] = await Promise.all([
+    readFile(new URL("../app/member/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/member-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL("../drizzle/0000_jittery_red_hulk.sql", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(memberPage, /THE ABLE PROGRAM/);
+  assert.match(memberPage, /PERSONALIZED IDENTITY PROFILE/);
+  assert.match(memberPage, /Your 90-day plan/);
+  assert.match(memberPage, /THE ROOM/);
+  assert.match(memberPage, /ACCOUNTABILITY/);
+  assert.match(memberPage, /save_response/);
+  assert.match(memberPage, /complete_module/);
+  assert.match(store, /ON CONFLICT\(member_id, question_key\)/);
+  assert.match(store, /mark_notifications_read/);
+  assert.match(schema, /surveyResponses/);
+  assert.match(migration, /CREATE TABLE `survey_responses`/);
+  assert.equal(JSON.parse(hosting).d1, "DB");
 });

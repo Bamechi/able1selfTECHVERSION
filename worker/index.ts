@@ -7,6 +7,7 @@ interface Env {
   DB: D1Database;
   DEMO_LOGIN_EMAIL?: string;
   DEMO_LOGIN_PASSWORD?: string;
+  AUTH_SESSION_SECRET?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {

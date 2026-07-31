@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from "react";
-import { AuthModal, MemberPortal } from "./member-experience";
+import { AuthModal } from "./member-experience";
 
 type Audience = "entrepreneur" | "corporate";
 
@@ -351,7 +351,6 @@ export default function Home() {
   const [introVisible, setIntroVisible] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
   const [memberEmail, setMemberEmail] = useState("");
-  const [portalOpen, setPortalOpen] = useState(false);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia(
@@ -361,11 +360,22 @@ export default function Home() {
       () => setIntroVisible(false),
       reducedMotion ? 200 : 3200,
     );
-    const savedSession = window.sessionStorage.getItem(
-      "able1self-preview-session",
-    );
-    const sessionTimer = window.setTimeout(() => {
-      if (savedSession) setMemberEmail(savedSession);
+    const sessionTimer = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/auth/session");
+        const result = (await response.json()) as {
+          authenticated?: boolean;
+          user?: { email?: string } | null;
+        };
+        if (result.authenticated && result.user?.email) {
+          setMemberEmail(result.user.email);
+        }
+      } catch {
+        // The public site remains usable if the member service is unavailable.
+      }
+      if (new URLSearchParams(window.location.search).get("login") === "1") {
+        setAuthOpen(true);
+      }
     }, 0);
 
     const elements = document.querySelectorAll<HTMLElement>(".reveal");
@@ -393,21 +403,14 @@ export default function Home() {
   const selectedStage = stages[activeStage];
 
   function openMemberAccess() {
-    if (memberEmail) setPortalOpen(true);
+    if (memberEmail) window.location.assign("/member");
     else setAuthOpen(true);
   }
 
   function authenticate(email: string) {
-    window.sessionStorage.setItem("able1self-preview-session", email);
     setMemberEmail(email);
     setAuthOpen(false);
-    setPortalOpen(true);
-  }
-
-  function signOut() {
-    window.sessionStorage.removeItem("able1self-preview-session");
-    setMemberEmail("");
-    setPortalOpen(false);
+    window.location.assign("/member");
   }
 
   return (
@@ -417,13 +420,6 @@ export default function Home() {
         <AuthModal
           onClose={() => setAuthOpen(false)}
           onAuthenticated={authenticate}
-        />
-      )}
-      {portalOpen && (
-        <MemberPortal
-          email={memberEmail}
-          onClose={() => setPortalOpen(false)}
-          onSignOut={signOut}
         />
       )}
       <header className="site-header">

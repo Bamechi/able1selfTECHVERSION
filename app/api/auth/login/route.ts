@@ -1,15 +1,5 @@
-type RuntimeEnv = {
-  DEMO_LOGIN_EMAIL?: string;
-  DEMO_LOGIN_PASSWORD?: string;
-};
-
-function getRuntimeEnv() {
-  return (
-    globalThis as typeof globalThis & {
-      __ABLE1SELF_RUNTIME_ENV__?: RuntimeEnv;
-    }
-  ).__ABLE1SELF_RUNTIME_ENV__;
-}
+import { createSessionCookie } from "../../../../lib/auth-session";
+import { getRuntimeEnv } from "../../../../lib/runtime";
 
 function constantTimeEqual(value: string, expected: string) {
   const length = Math.max(value.length, expected.length);
@@ -51,11 +41,22 @@ export async function POST(request: Request) {
     );
   }
 
-  return Response.json({
-    ok: true,
-    user: {
-      email,
-      name: "Amechi",
-    },
-  });
+  try {
+    const cookie = await createSessionCookie(email, request);
+    return Response.json(
+      {
+        ok: true,
+        user: {
+          email,
+          name: "Amechi",
+        },
+      },
+      { headers: { "set-cookie": cookie } },
+    );
+  } catch {
+    return Response.json(
+      { ok: false, error: "Secure member sessions are not configured." },
+      { status: 503 },
+    );
+  }
 }
