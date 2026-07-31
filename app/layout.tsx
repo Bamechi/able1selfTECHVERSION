@@ -12,9 +12,9 @@ export async function generateMetadata(): Promise<Metadata> {
     requestHeaders.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
-  const title = "Able1Self — The Uniform of Personal Evolution";
+  const title = "Able1Self — Know Yourself. Build What Comes Next.";
   const description =
-    "Discover who you are. Then dress the part. The four-stage ABLE Program by Shawn Daniels.";
+    "A four-stage self-development system for clearer decisions, a stronger professional identity, and focused action.";
 
   return {
     title,
@@ -30,9 +30,9 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [
         {
           url: `${origin}/og.png`,
-          width: 1728,
-          height: 910,
-          alt: "Able1Self — Discover who you are. Then dress the part.",
+          width: 1731,
+          height: 908,
+          alt: "Able1Self — Know yourself. Build what comes next.",
         },
       ],
     },

@@ -1,315 +1,265 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-const FRAME_COUNT = 160;
+type Audience = "entrepreneur" | "corporate";
+
+const audiences = {
+  entrepreneur: {
+    label: "I’m building a business",
+    headline: "Turn self-knowledge into better business decisions.",
+    copy: "Clarify what you are uniquely built to do, how you create value, which relationships matter, and what to execute over the next 90 days.",
+    outcomes: [
+      "A clear founder position",
+      "A map of skills and revenue paths",
+      "A focused 90-day execution plan",
+    ],
+  },
+  corporate: {
+    label: "I’m building my career",
+    headline: "Make your next move from clarity—not pressure.",
+    copy: "Understand your patterns, define the value you bring, strengthen how you communicate it, and make career decisions that fit who you are.",
+    outcomes: [
+      "A stronger professional identity",
+      "A map of relationships and opportunities",
+      "A practical career action plan",
+    ],
+  },
+};
 
 const stages = [
   {
     letter: "A",
     name: "Analyze",
-    descriptor: "Know the person beneath the performance.",
-    promise: "By the end, I will know…",
-    quote:
-      "If you're taught you can't do anything, you won't do anything. I was taught I can do everything.",
-    attribution: "Kanye West",
+    summary: "Understand yourself before you decide what comes next.",
+    detail:
+      "Identify the patterns, values, strengths, energy, and experiences that shape how you think and operate.",
     modules: ["Know Your Type", "Know Your Energy", "Know Your Story"],
-    deliverable: "Your self-discovery profile",
+    output: "Self-discovery profile",
   },
   {
     letter: "B",
     name: "Brand",
-    descriptor: "Define the image, presence, and story the world sees.",
-    promise: "By the end, I will have…",
-    quote: "Fashion is a form of self-expression.",
-    attribution: "Virgil Abloh",
-    modules: ["Define Your Image", "The Image Plan", "Your Brand Statement"],
-    deliverable: "Your personal image plan",
+    summary: "Turn what you know into a clear professional identity.",
+    detail:
+      "Define the value you bring, how you communicate it, and the reputation you want your work to create.",
+    modules: [
+      "Position Your Value",
+      "Build Your Presence",
+      "Your Brand Statement",
+    ],
+    output: "Professional positioning",
   },
   {
     letter: "L",
     name: "Leverage",
-    descriptor: "Map your relationships, assets, and access.",
-    promise: "By the end, I will understand…",
-    quote: "We tend to network up when we really should be networking across.",
-    attribution: "Issa Rae",
+    summary: "Use the skills, relationships, and access you already have.",
+    detail:
+      "Map your network, identify opportunity paths, and connect your abilities to real ways of creating value.",
     modules: ["Map Your Network", "The Revenue Path", "Ecosystem & Referrals"],
-    deliverable: "Your monetization roadmap",
+    output: "Opportunity roadmap",
   },
   {
     letter: "E",
     name: "Embark",
-    descriptor: "Reverse-engineer the vision and move.",
-    promise: "By the end, I am ready to…",
-    quote: "Goals without action aren't goals. They're just dreams.",
-    attribution: "Kobe Bryant",
+    summary: "Choose a direction and put it into motion.",
+    detail:
+      "Reverse-engineer one meaningful goal into a focused 90-day plan with accountability built in.",
     modules: [
       "Your Launch Moment",
       "Your First 90 Days",
-      "Your Accountability Structure",
+      "Your Accountability System",
     ],
-    deliverable: "Your 90-day blueprint",
+    output: "90-day action plan",
   },
 ];
 
 const faqs = [
   {
-    q: "What is the ABLE Program?",
-    a: "ABLE is a four-stage personal evolution system built to align who you are, how you show up, what you can leverage, and where you go next. You move through Analyze, Brand, Leverage, and Embark in order.",
+    question: "What is Able1Self?",
+    answer:
+      "Able1Self is a guided self-development program built around the four-stage ABLE framework: Analyze, Brand, Leverage, and Embark. It helps you understand yourself, define your value, recognize your opportunities, and build a plan you can act on.",
   },
   {
-    q: "Is the program self-paced or live?",
-    a: "The twelve core modules are self-paced and combine concise video lessons, written reflection prompts, and downloadable workbooks. Premium and VIP access add human review and coaching support.",
+    question: "Who is the program for?",
+    answer:
+      "It is designed for entrepreneurs, professionals, emerging leaders, and anyone at an inflection point who wants to make their next move with more clarity and intention.",
   },
   {
-    q: "What do I receive at the end?",
-    a: "You leave with a Personalized Identity Profile: your personality snapshot, energy profile, style archetype, color palette, brand statement, network map, monetization roadmap, and 90-day blueprint assembled in one strategic document.",
+    question: "Is the program self-paced?",
+    answer:
+      "Yes. The twelve core modules combine focused video lessons, written reflection, assessments, and practical exercises. Premium and VIP access add human review and coaching support.",
   },
   {
-    q: "Do I need to buy Able1Self clothing?",
-    a: "No. The program and the fashion house are connected by the same philosophy, but they are separate purchases. The clothing is an expression of the work—not a requirement for doing it.",
+    question: "What do I receive at the end?",
+    answer:
+      "You receive a Personalized Identity Profile that brings together your strengths, values, decision patterns, professional positioning, network map, opportunity paths, and 90-day action plan.",
   },
   {
-    q: "How does the community work?",
-    a: "Every enrolled member enters The Room, a private member board for sharing wins, asking for feedback, and staying in motion. You can also message other members and connect with an accountability partner.",
+    question: "How does the community work?",
+    answer:
+      "Every enrolled member joins The Room, a private space for sharing progress, asking for feedback, and connecting with an accountability partner. Community participation is there to support the work—not distract from it.",
   },
   {
-    q: "What happens after I finish?",
-    a: "Your profile becomes a living blueprint. VIP members receive lifetime updates and first access to Able Society, while every graduate leaves with a concrete execution plan and an accountability structure for the next chapter.",
+    question: "How long does it take?",
+    answer:
+      "The program is self-paced. Most people can complete the core work in several weeks, then use the Embark stage to execute their 90-day plan.",
   },
 ];
 
-function ArrowIcon() {
-  return (
-    <span aria-hidden="true" className="arrow-icon">
-      ↗
-    </span>
-  );
+function Arrow() {
+  return <span aria-hidden="true">↗</span>;
 }
 
-function Wordmark() {
+function Logo() {
   return (
-    <a className="wordmark" href="#top" aria-label="Able1Self home">
-      ABLE<span>1</span>SELF
+    <a className="logo" href="#top" aria-label="Able1Self home">
+      <span className="logo-mark">A1</span>
+      <span>ABLE1SELF</span>
     </a>
   );
 }
 
-function ScrubHero() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imagesRef = useRef<HTMLImageElement[]>([]);
-  const frameRef = useRef(0);
-  const progressRef = useRef<HTMLDivElement>(null);
-  const [activeChapter, setActiveChapter] = useState(0);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    const canvas = canvasRef.current;
-    if (!section || !canvas) return;
-
-    const context = canvas.getContext("2d", { alpha: false });
-    if (!context) return;
-
-    let raf = 0;
-    let disposed = false;
-    let loaded = 0;
-
-    const draw = (image: HTMLImageElement) => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      context.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
-      const drawWidth = image.naturalWidth * scale;
-      const drawHeight = image.naturalHeight * scale;
-      context.drawImage(
-        image,
-        (width - drawWidth) / 2,
-        (height - drawHeight) / 2,
-        drawWidth,
-        drawHeight,
-      );
-    };
-
-    const drawCurrent = () => {
-      const image = imagesRef.current[frameRef.current];
-      if (image?.complete && image.naturalWidth) draw(image);
-    };
-
-    const renderFromScroll = () => {
-      raf = 0;
-      const rect = section.getBoundingClientRect();
-      const distance = Math.max(section.offsetHeight - window.innerHeight, 1);
-      const progress = Math.min(Math.max(-rect.top / distance, 0), 1);
-      const nextFrame = Math.min(
-        FRAME_COUNT - 1,
-        Math.floor(progress * (FRAME_COUNT - 1)),
-      );
-
-      if (nextFrame !== frameRef.current) {
-        frameRef.current = nextFrame;
-        drawCurrent();
-      }
-
-      if (progressRef.current) {
-        progressRef.current.style.transform = `scaleY(${Math.max(progress, 0.015)})`;
-      }
-
-      const chapter = Math.min(3, Math.floor(progress * 4.02));
-      setActiveChapter((current) => (current === chapter ? current : chapter));
-    };
-
-    const onScroll = () => {
-      if (!raf) raf = window.requestAnimationFrame(renderFromScroll);
-    };
-
-    const first = new Image();
-    first.src = "/frames/hero_001.webp";
-    first.onload = () => {
-      if (disposed) return;
-      imagesRef.current[0] = first;
-      draw(first);
-      setReady(true);
-    };
-
-    const preload = () => {
-      for (let index = 1; index < FRAME_COUNT; index += 1) {
-        const image = new Image();
-        image.decoding = "async";
-        image.src = `/frames/hero_${String(index + 1).padStart(3, "0")}.webp`;
-        image.onload = () => {
-          loaded += 1;
-          imagesRef.current[index] = image;
-          if (index === frameRef.current) draw(image);
-        };
-        if (loaded > 20) image.fetchPriority = "low";
-      }
-    };
-
-    const idle = window.setTimeout(preload, 120);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", drawCurrent);
-    renderFromScroll();
-
-    return () => {
-      disposed = true;
-      window.clearTimeout(idle);
-      window.cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", drawCurrent);
-    };
-  }, []);
-
+function ProgressRing({
+  value,
+  label,
+}: {
+  value: number;
+  label: string;
+}) {
   return (
-    <section className="scrub-hero" id="top" ref={sectionRef}>
-      <div className="scrub-sticky">
-        <canvas ref={canvasRef} aria-hidden="true" />
-        <div className="hero-vignette" />
-        <div className="film-grain" />
-
-        <div className={`hero-loader ${ready ? "is-ready" : ""}`}>
-          <span />
-          <p>Tailoring the experience</p>
-        </div>
-
-        <div className="hero-frame">
-          <div className="hero-kicker">The ABLE Program / Chapter 01</div>
-          <div className="hero-copy">
-            <p className="eyebrow">The uniform of personal evolution</p>
-            <h1>
-              Discover who you are.
-              <em>Then dress the part.</em>
-            </h1>
-            <p className="hero-intro">
-              Four stages to close the gap between the life you perform and the
-              person you actually are.
-            </p>
-            <div className="hero-actions">
-              <a className="button button-gold" href="#access">
-                Start your ABLE journey <ArrowIcon />
-              </a>
-              <a className="text-link" href="#story">
-                Watch the story <span aria-hidden="true">↓</span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div className="scrub-meter" aria-hidden="true">
-          <div className="meter-line">
-            <div className="meter-progress" ref={progressRef} />
-          </div>
-          <div className="meter-stages">
-            {stages.map((stage, index) => (
-              <span
-                className={index === activeChapter ? "is-active" : ""}
-                key={stage.letter}
-              >
-                {stage.letter}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="scroll-cue" aria-hidden="true">
-          <span>Scroll to become</span>
-          <i />
-        </div>
+    <div
+      className="progress-ring"
+      style={{ "--progress": `${value * 3.6}deg` } as React.CSSProperties}
+      aria-label={`${label}: ${value}%`}
+    >
+      <div>
+        <strong>{value}%</strong>
+        <span>{label}</span>
       </div>
-    </section>
+    </div>
   );
 }
 
-function IdentityProfile() {
+function PlatformPreview() {
   return (
-    <div className="identity-card reveal">
-      <div className="identity-top">
-        <div className="identity-monogram">A1</div>
+    <div className="platform-preview reveal">
+      <div className="preview-grid" aria-hidden="true" />
+      <div className="photo-panel">
+        {/* vinext serves this local WebP directly without an optimization proxy. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/shawn-daniels.webp"
+          alt="Shawn Daniels, founder of Able1Self"
+        />
+        <div className="photo-shade" />
+        <div className="photo-tag">
+          <span>Founder</span>
+          <strong>Shawn Daniels</strong>
+        </div>
+      </div>
+
+      <div className="system-card stage-status">
+        <div className="card-label">
+          <span className="live-dot" />
+          Current stage
+        </div>
+        <div className="stage-status-main">
+          <div className="stage-badge">A</div>
+          <div>
+            <strong>Analyze</strong>
+            <span>Module 2 of 3</span>
+          </div>
+        </div>
+        <div className="mini-progress">
+          <span style={{ width: "68%" }} />
+        </div>
+      </div>
+
+      <div className="system-card profile-status">
+        <ProgressRing value={72} label="Profile" />
         <div>
-          <span>Personalized Identity Profile</span>
-          <p>PRIVATE / MEMBER 0047</p>
-        </div>
-        <div className="profile-status">82% complete</div>
-      </div>
-      <div className="identity-body">
-        <div className="identity-photo">
-          <img
-            src="/images/identity.jpg"
-            alt="Able1Self member wearing a black leather jacket"
-          />
-          <span>Style archetype / The Architect</span>
-        </div>
-        <div className="identity-data">
-          <div>
-            <span>Analyze</span>
-            <strong>Strategist / Builder</strong>
-          </div>
-          <div>
-            <span>Brand</span>
-            <strong>Quiet authority</strong>
-          </div>
-          <div>
-            <span>Leverage</span>
-            <strong>Culture × Systems</strong>
-          </div>
-          <div className="profile-palette" aria-label="Profile color palette">
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
+          <span className="card-label">Identity profile</span>
+          <strong>3 insights ready</strong>
+          <small>Values · Energy · Strengths</small>
         </div>
       </div>
-      <div className="identity-footer">
-        <span>Next: build your 90-day blueprint</span>
-        <button type="button">Continue →</button>
+
+      <div className="system-card next-action">
+        <span className="card-label">Next action</span>
+        <strong>Complete your energy map</strong>
+        <span className="action-arrow">→</span>
+      </div>
+
+      <div className="system-status">
+        <span />
+        <p>YOUR NEXT MOVE IS SYNCING</p>
+        <b>01 / 04</b>
+      </div>
+    </div>
+  );
+}
+
+function IdentityDashboard() {
+  return (
+    <div className="identity-dashboard reveal">
+      <div className="dash-top">
+        <div>
+          <span className="product-chip">A1 / PROFILE</span>
+          <h3>Your operating system</h3>
+        </div>
+        <div className="dash-avatar">JD</div>
+      </div>
+
+      <div className="dash-progress">
+        <div>
+          <span>Overall progress</span>
+          <strong>68%</strong>
+        </div>
+        <div className="wide-progress">
+          <span />
+        </div>
+        <div className="stage-track">
+          {stages.map((stage, index) => (
+            <div className={index < 2 ? "complete" : ""} key={stage.letter}>
+              <span>{stage.letter}</span>
+              <small>{stage.name}</small>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="dash-data-grid">
+        <article>
+          <span className="data-label">Core values</span>
+          <strong>Autonomy / Impact / Mastery</strong>
+          <div className="data-lines">
+            <i style={{ width: "88%" }} />
+            <i style={{ width: "68%" }} />
+            <i style={{ width: "76%" }} />
+          </div>
+        </article>
+        <article>
+          <span className="data-label">Work pattern</span>
+          <strong>Strategic builder</strong>
+          <div className="signal-chart" aria-hidden="true">
+            {[34, 60, 46, 82, 58, 92, 70, 100].map((height, index) => (
+              <i style={{ height: `${height}%` }} key={index} />
+            ))}
+          </div>
+        </article>
+        <article className="action-plan">
+          <div>
+            <span className="data-label">90-day focus</span>
+            <strong>Launch the next chapter</strong>
+          </div>
+          <ProgressRing value={42} label="Plan" />
+        </article>
+      </div>
+
+      <div className="dash-footer">
+        <span>Profile updated today</span>
+        <button type="button">View full profile →</button>
       </div>
     </div>
   );
@@ -317,46 +267,51 @@ function IdentityProfile() {
 
 function CommunityPreview() {
   return (
-    <div className="room-ui reveal" aria-label="Preview of The Room community">
-      <div className="room-topbar">
-        <strong>THE ROOM</strong>
-        <span>24 members online</span>
-      </div>
-      <article className="room-post room-post-main">
-        <div className="avatar">SD</div>
+    <div className="community-preview reveal">
+      <div className="community-header">
         <div>
-          <div className="post-meta">
+          <span className="product-chip">COMMUNITY / LIVE</span>
+          <strong>The Room</strong>
+        </div>
+        <span className="online-count">
+          <i /> 24 online
+        </span>
+      </div>
+      <article className="community-post">
+        <div className="member-avatar lime">SD</div>
+        <div>
+          <div className="member-meta">
             <strong>Shawn Daniels</strong>
-            <span className="stage-chip">A</span>
+            <span>A</span>
             <time>8:42 AM</time>
           </div>
           <p>
-            Welcome to The Room. Start with this: what are you ready to stop
-            performing?
+            What is one decision you would make differently if you trusted your
+            own read of the situation?
           </p>
-          <div className="post-actions">
-            <span>♡ 18</span>
-            <span>12 responses</span>
-          </div>
-        </div>
-      </article>
-      <article className="room-post room-post-offset">
-        <div className="avatar avatar-bone">KM</div>
-        <div>
           <div className="post-meta">
-            <strong>Kiara M.</strong>
-            <span className="stage-chip">B</span>
+            <span>18 responses</span>
+            <span>12 reflections</span>
           </div>
-          <p>Just finished my Image Plan. The mirror finally makes sense.</p>
         </div>
       </article>
-      <div className="partner-card">
-        <span>Accountability match</span>
+      <article className="community-post compact">
+        <div className="member-avatar">KM</div>
         <div>
-          <div className="avatar">JC</div>
+          <div className="member-meta">
+            <strong>Kiara M.</strong>
+            <span>B</span>
+          </div>
+          <p>My professional statement finally sounds like me.</p>
+        </div>
+      </article>
+      <div className="match-card">
+        <span className="card-label">Accountability match</span>
+        <div>
+          <div className="member-avatar dark">JC</div>
           <p>
             <strong>Jordan C.</strong>
-            <small>Leverage / 67% complete</small>
+            <small>Leverage · 67% complete</small>
           </p>
           <button type="button">Message</button>
         </div>
@@ -367,53 +322,56 @@ function CommunityPreview() {
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [audience, setAudience] = useState<Audience>("entrepreneur");
+  const [activeStage, setActiveStage] = useState(0);
 
   useEffect(() => {
-    const revealItems = Array.from(
-      document.querySelectorAll<HTMLElement>(".reveal"),
-    );
+    const elements = document.querySelectorAll<HTMLElement>(".reveal");
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
+            entry.target.classList.add("visible");
             observer.unobserve(entry.target);
           }
         });
       },
-      { rootMargin: "0px 0px -8% 0px", threshold: 0.12 },
+      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
     );
 
-    revealItems.forEach((item) => observer.observe(item));
+    elements.forEach((element) => observer.observe(element));
     return () => observer.disconnect();
   }, []);
+
+  const selectedAudience = audiences[audience];
+  const selectedStage = stages[activeStage];
 
   return (
     <main>
       <header className="site-header">
-        <Wordmark />
-        <nav className={menuOpen ? "is-open" : ""} aria-label="Primary">
+        <Logo />
+        <nav className={menuOpen ? "open" : ""} aria-label="Primary navigation">
           <a href="#framework" onClick={() => setMenuOpen(false)}>
             Framework
           </a>
-          <a href="#story" onClick={() => setMenuOpen(false)}>
+          <a href="#profile" onClick={() => setMenuOpen(false)}>
+            Your profile
+          </a>
+          <a href="#founder" onClick={() => setMenuOpen(false)}>
             Founder
           </a>
           <a href="#program" onClick={() => setMenuOpen(false)}>
             Program
           </a>
           <a href="#access" onClick={() => setMenuOpen(false)}>
-            Access
-          </a>
-          <a href="#faq" onClick={() => setMenuOpen(false)}>
-            FAQ
+            Pricing
           </a>
         </nav>
-        <a className="header-cta" href="#access">
-          Enter the program
+        <a className="nav-cta" href="#access">
+          Start the program <Arrow />
         </a>
         <button
-          className={`menu-toggle ${menuOpen ? "is-open" : ""}`}
+          className={`menu-toggle ${menuOpen ? "open" : ""}`}
           type="button"
           aria-label="Toggle navigation"
           aria-expanded={menuOpen}
@@ -424,385 +382,467 @@ export default function Home() {
         </button>
       </header>
 
-      <ScrubHero />
-
-      <section className="problem section-bone" id="philosophy">
-        <div className="section-index reveal">01 / The gap</div>
-        <div className="problem-grid">
-          <div className="problem-statement reveal">
-            <p className="eyebrow dark">The problem isn&apos;t ambition</p>
-            <h2>
-              Most people are dressed for a life they{" "}
-              <em>never actually chose.</em>
-            </h2>
+      <section className="hero" id="top">
+        <div className="hero-grid" aria-hidden="true" />
+        <div className="hero-glow" aria-hidden="true" />
+        <div className="hero-copy">
+          <div className="status-pill reveal">
+            <span />
+            The ABLE Program · Enrollment open
           </div>
-          <div className="problem-body reveal">
-            <p>
-              You climbed the ladder someone else built. You said yes to the
-              version of success that looked right from the outside.
-            </p>
-            <p>
-              Somewhere in there, the mirror stopped matching the person you
-              actually are. Able1Self exists to close that gap—permanently.
-            </p>
-            <a className="text-link dark-link" href="#framework">
-              Meet the framework <ArrowIcon />
+          <h1 className="reveal">
+            Know yourself.
+            <span>Build what comes next.</span>
+          </h1>
+          <p className="hero-intro reveal">
+            A four-stage self-development system that turns reflection into a
+            clear professional identity, stronger decisions, and a plan you can
+            act on.
+          </p>
+          <div className="hero-actions reveal">
+            <a className="button primary" href="#access">
+              Start your ABLE journey <Arrow />
+            </a>
+            <a className="button secondary" href="#framework">
+              See how it works <span aria-hidden="true">↓</span>
             </a>
           </div>
+          <div className="built-for reveal">
+            <span>Built for</span>
+            <p>Entrepreneurs</p>
+            <i />
+            <p>Professionals</p>
+            <i />
+            <p>People at a crossroads</p>
+          </div>
         </div>
-        <div className="stat-rail">
+        <PlatformPreview />
+        <div className="hero-metrics">
           <div className="reveal">
             <strong>04</strong>
-            <span>stages</span>
+            <span>connected stages</span>
           </div>
           <div className="reveal">
             <strong>12</strong>
-            <span>modules</span>
-          </div>
-          <div className="reveal">
-            <strong>01</strong>
-            <span>aligned self</span>
+            <span>focused modules</span>
           </div>
           <div className="reveal">
             <strong>90</strong>
-            <span>days to move</span>
+            <span>day action plan</span>
           </div>
         </div>
       </section>
 
-      <section className="framework section-ink" id="framework">
-        <div className="framework-heading">
-          <div className="section-index light reveal">02 / The framework</div>
-          <div className="reveal">
-            <p className="eyebrow">Four stages. In order.</p>
-            <h2>
-              One framework.
-              <br />
-              Four stages. <em>One self.</em>
-            </h2>
-          </div>
-          <p className="framework-intro reveal">
-            ABLE is not a personality test or a mood board. It is the sequence
-            Shawn Daniels used on himself—and on the people he coached for a
-            decade—to move from performing a life to owning one.
+      <section className="clarity-section">
+        <div className="section-heading">
+          <span className="section-label reveal">01 / Start with clarity</span>
+          <h2 className="reveal">
+            You don’t need more advice.
+            <span>You need a clearer read on yourself.</span>
+          </h2>
+          <p className="reveal">
+            Able1Self gives you a structured way to step back, understand the
+            patterns behind your choices, and move forward with intention.
           </p>
         </div>
 
-        <div className="stage-list">
-          {stages.map((stage, index) => (
-            <article className="stage-row reveal" key={stage.letter}>
-              <div className="stage-number">0{index + 1}</div>
-              <div className="stage-letter">{stage.letter}</div>
-              <div className="stage-copy">
-                <h3>{stage.name}</h3>
-                <p>{stage.descriptor}</p>
-                <blockquote>
-                  “{stage.quote}”
-                  <cite>— {stage.attribution}</cite>
-                </blockquote>
-              </div>
-              <div className="stage-outcome">
-                <span>{stage.promise}</span>
-                <small>{stage.deliverable}</small>
-              </div>
-            </article>
-          ))}
+        <div className="audience-switcher reveal">
+          <div className="audience-tabs" role="tablist" aria-label="Choose your path">
+            {(Object.keys(audiences) as Audience[]).map((key) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={audience === key}
+                className={audience === key ? "active" : ""}
+                key={key}
+                onClick={() => setAudience(key)}
+              >
+                {audiences[key].label}
+              </button>
+            ))}
+          </div>
+          <div className="audience-panel" role="tabpanel">
+            <div>
+              <span className="product-chip">
+                PATH / {audience === "entrepreneur" ? "FOUNDER" : "CAREER"}
+              </span>
+              <h3>{selectedAudience.headline}</h3>
+              <p>{selectedAudience.copy}</p>
+            </div>
+            <ul>
+              {selectedAudience.outcomes.map((outcome) => (
+                <li key={outcome}>
+                  <span>✓</span>
+                  {outcome}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
-      <section className="story" id="story">
-        <div className="story-image reveal">
-          <img src="/images/founder.jpg" alt="Shawn Daniels in black tailoring" />
-          <div className="image-caption">
-            <span>Shawn Daniels</span>
-            <span>Founder / Designer / Guide</span>
+      <section className="framework-section" id="framework">
+        <div className="framework-intro">
+          <span className="section-label light reveal">02 / The framework</span>
+          <h2 className="reveal">
+            One system.
+            <span>Four connected decisions.</span>
+          </h2>
+          <p className="reveal">
+            Each stage answers a different question. Together, they move you
+            from self-awareness to focused execution.
+          </p>
+        </div>
+
+        <div className="framework-console reveal">
+          <div className="stage-tabs" role="tablist" aria-label="ABLE stages">
+            {stages.map((stage, index) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeStage === index}
+                className={activeStage === index ? "active" : ""}
+                onClick={() => setActiveStage(index)}
+                key={stage.letter}
+              >
+                <span>{stage.letter}</span>
+                <div>
+                  <small>0{index + 1}</small>
+                  <strong>{stage.name}</strong>
+                </div>
+                <i />
+              </button>
+            ))}
+          </div>
+
+          <div className="stage-panel" role="tabpanel">
+            <div className="stage-panel-head">
+              <span className="stage-large">{selectedStage.letter}</span>
+              <div>
+                <span className="product-chip">
+                  STAGE 0{activeStage + 1} / 04
+                </span>
+                <h3>{selectedStage.name}</h3>
+              </div>
+            </div>
+            <p className="stage-summary">{selectedStage.summary}</p>
+            <p className="stage-detail">{selectedStage.detail}</p>
+            <div className="stage-modules">
+              {selectedStage.modules.map((module, index) => (
+                <div key={module}>
+                  <span>
+                    {selectedStage.letter}
+                    {index + 1}
+                  </span>
+                  <strong>{module}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="stage-output">
+              <span>Output</span>
+              <strong>{selectedStage.output}</strong>
+            </div>
           </div>
         </div>
-        <div className="story-copy">
-          <div className="section-index reveal">03 / The founder</div>
-          <p className="eyebrow dark reveal">From corporate to couture</p>
+      </section>
+
+      <section className="profile-section" id="profile">
+        <div className="profile-copy">
+          <span className="section-label reveal">03 / Your result</span>
           <h2 className="reveal">
-            He didn&apos;t chase fashion.
-            <em>Fashion found him.</em>
+            Your insights,
+            <span>connected in one place.</span>
           </h2>
-          <div className="story-text reveal">
+          <p className="reveal">
+            As you complete the program, your Personalized Identity Profile
+            becomes a working view of how you operate and where you are going.
+            It is built from your answers—not generic advice.
+          </p>
+          <div className="profile-points reveal">
+            {[
+              ["01", "Strengths, values, and decision patterns"],
+              ["02", "Professional positioning and brand statement"],
+              ["03", "Network map and opportunity pathways"],
+              ["04", "Focused 90-day action plan"],
+            ].map(([number, text]) => (
+              <div key={number}>
+                <span>{number}</span>
+                <p>{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <IdentityDashboard />
+      </section>
+
+      <section className="founder-section" id="founder">
+        <div className="founder-photo reveal">
+          {/* vinext serves this local WebP directly without an optimization proxy. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/shawn-daniels.webp"
+            alt="Shawn Daniels, founder of Able1Self"
+          />
+          <div>
+            <span>Founder / Designer / Strategist</span>
+            <strong>Shawn Daniels</strong>
+          </div>
+        </div>
+        <div className="founder-copy">
+          <span className="section-label light reveal">04 / Why Shawn built it</span>
+          <h2 className="reveal">
+            A framework built
+            <span>from lived experience.</span>
+          </h2>
+          <div className="founder-text reveal">
             <p>
-              Shawn Daniels spent his career helping people find clarity before
-              he found his own. He built a framework that got people promoted—
-              then got let go himself.
+              In corporate leadership, Shawn watched talented people make major
+              career decisions based on expectations, influence, and
+              groupthink—not a real understanding of themselves.
             </p>
             <p>
-              So he did what he had taught everyone else to do: he turned the
-              framework on his own life. What emerged was not a five-year plan.
-              It was a gift he had been sitting on the entire time.
+              He began building a framework that helped people get clear, lead
+              with confidence, and make better moves. When Shawn later faced his
+              own career transition, he used that same framework on himself.
             </p>
             <p>
-              Able1Self is what happens when self-awareness becomes a wardrobe.
+              Shawn is a designer and strategist. Able1Self is the
+              self-development system behind how he learned to understand his
+              strengths, choose his direction, and build a life that fit.
             </p>
           </div>
-          <a className="button button-ink reveal" href="#program">
-            Go through what changed everything <ArrowIcon />
+          <blockquote className="reveal">
+            “Now I’m opening the framework itself.”
+          </blockquote>
+          <a className="button light-button reveal" href="#program">
+            Explore the program <Arrow />
           </a>
         </div>
       </section>
 
-      <section className="profile section-bone" id="profile">
-        <div className="profile-copy">
-          <div className="section-index reveal">04 / The result</div>
-          <p className="eyebrow dark reveal">Not a certificate. A blueprint.</p>
-          <h2 className="reveal">
-            Your Personalized
-            <em>Identity Profile.</em>
-          </h2>
-          <p className="reveal">
-            Every answer becomes signal. As you move through ABLE, a strategic
-            document assembles around your own data—personality, energy, image,
-            network, revenue path, and next move.
-          </p>
-          <ul className="profile-list reveal">
-            <li>Personality snapshot + energy profile</li>
-            <li>Style archetype + personal color palette</li>
-            <li>Brand statement + network map</li>
-            <li>Monetization roadmap + 90-day blueprint</li>
-          </ul>
-        </div>
-        <IdentityProfile />
-      </section>
-
-      <section className="program section-ink" id="program">
-        <div className="program-head">
-          <div className="section-index light reveal">05 / The program</div>
+      <section className="program-section" id="program">
+        <div className="program-heading">
           <div>
-            <p className="eyebrow reveal">Self-paced. Sequential. Personal.</p>
+            <span className="section-label reveal">05 / The curriculum</span>
             <h2 className="reveal">
               Twelve modules.
-              <br />
-              Four stages. <em>One outcome.</em>
+              <span>One clear next move.</span>
             </h2>
           </div>
           <p className="reveal">
-            Each stage unlocks the next. Every module combines a focused lesson,
-            reflection prompts, and a workbook that moves your profile from
-            insight to action.
+            Move through the stages in order. Each module combines a focused
+            lesson, guided reflection, and a practical output that feeds your
+            profile.
           </p>
         </div>
 
         <div className="module-grid">
-          {stages.map((stage) => (
+          {stages.map((stage, stageIndex) => (
             <article className="module-card reveal" key={stage.letter}>
-              <div className="module-card-head">
+              <div className="module-head">
                 <span>{stage.letter}</span>
                 <div>
-                  <small>Stage {stage.letter}</small>
+                  <small>STAGE 0{stageIndex + 1}</small>
                   <h3>{stage.name}</h3>
                 </div>
               </div>
               <ol>
                 {stage.modules.map((module, index) => (
                   <li key={module}>
-                    <span>
-                      {stage.letter}
-                      {index + 1}
-                    </span>
+                    <span>0{index + 1}</span>
                     {module}
                   </li>
                 ))}
               </ol>
-              <div className="module-result">
-                <small>Walk away with</small>
-                <strong>{stage.deliverable}</strong>
+              <div className="module-output">
+                <span>OUTPUT</span>
+                <strong>{stage.output}</strong>
               </div>
             </article>
           ))}
         </div>
-
-        <div className="program-includes reveal">
-          {[
-            "12 guided modules",
-            "Private member community",
-            "Accountability partner",
-            "Smart progress nudges",
-            "Downloadable workbooks",
-            "Personalized Identity Profile",
-          ].map((item) => (
-            <span key={item}>+ {item}</span>
-          ))}
-        </div>
       </section>
 
-      <section className="room section-bone" id="community">
-        <div className="room-copy">
-          <div className="section-index reveal">06 / The room</div>
-          <p className="eyebrow dark reveal">Evolution needs witnesses</p>
+      <section className="community-section">
+        <div className="community-copy">
+          <span className="section-label reveal">06 / The Room</span>
           <h2 className="reveal">
-            You don&apos;t
-            <em>evolve alone.</em>
+            Do the work
+            <span>with people who are moving too.</span>
           </h2>
           <p className="reveal">
-            Enrolling puts you in the room with everyone else doing the work—a
-            private member board where you share wins, ask for feedback on your
-            Image Plan, and connect with the person who keeps you moving.
+            The Room is the private community inside Able1Self. Share progress,
+            ask for perspective, connect with your accountability partner, and
+            keep momentum when the work gets real.
           </p>
-          <div className="room-features reveal">
-            <span>01 / Community board</span>
-            <span>02 / Direct messages</span>
-            <span>03 / Accountability matching</span>
-          </div>
+          <ul className="community-features reveal">
+            <li>
+              <span>01</span> Private member board
+            </li>
+            <li>
+              <span>02</span> Direct messages
+            </li>
+            <li>
+              <span>03</span> Accountability matching
+            </li>
+          </ul>
         </div>
         <CommunityPreview />
       </section>
 
-      <section className="access section-ink" id="access">
-        <div className="access-head">
-          <div className="section-index light reveal">07 / Access</div>
+      <section className="access-section" id="access">
+        <div className="access-heading">
           <div>
-            <p className="eyebrow reveal">Founding member access</p>
+            <span className="section-label light reveal">07 / Access</span>
             <h2 className="reveal">
-              Choose your level
-              <em>of support.</em>
+              Choose the level
+              <span>of support you need.</span>
             </h2>
           </div>
-          <div className="founder-note reveal">
-            <span>First 50</span>
-            <p>Founding members receive early enrollment access.</p>
+          <div className="founding-note reveal">
+            <strong>50</strong>
+            <p>Founding member places available.</p>
           </div>
         </div>
 
         <div className="pricing-grid">
-          <article className="price-card reveal">
-            <div className="price-top">
-              <span>01</span>
-              <h3>Starter</h3>
-              <p>For the self-directed builder.</p>
-            </div>
-            <div className="price">
-              <small>$</small>297
-            </div>
-            <ul>
-              <li>Complete 12-module program</li>
-              <li>AI-generated Identity Profile</li>
-              <li>Accountability partner matching</li>
-              <li>Community + messaging access</li>
-              <li>Email support</li>
-            </ul>
-            <a className="button button-outline" href="#">
-              Choose Starter <ArrowIcon />
-            </a>
-          </article>
-
-          <article className="price-card featured reveal">
-            <div className="recommended">Recommended</div>
-            <div className="price-top">
-              <span>02</span>
-              <h3>Premium</h3>
-              <p>For insight with a human eye.</p>
-            </div>
-            <div className="price">
-              <small>$</small>597
-            </div>
-            <ul>
-              <li>Everything in Starter</li>
-              <li>Human-reviewed Identity Profile</li>
-              <li>One coaching touchpoint with Shawn</li>
-              <li>Priority support</li>
-              <li>Profile refinement guidance</li>
-            </ul>
-            <a className="button button-gold" href="#">
-              Choose Premium <ArrowIcon />
-            </a>
-          </article>
-
-          <article className="price-card reveal">
-            <div className="price-top">
-              <span>03</span>
-              <h3>VIP</h3>
-              <p>For a fully guided transformation.</p>
-            </div>
-            <div className="price">
-              <small>$</small>997
-            </div>
-            <ul>
-              <li>Everything in Premium</li>
-              <li>Fully custom profile review</li>
-              <li>Extended coaching access</li>
-              <li>Lifetime profile updates</li>
-              <li>First access to Able Society</li>
-            </ul>
-            <a className="button button-outline" href="#">
-              Choose VIP <ArrowIcon />
-            </a>
-          </article>
+          {[
+            {
+              name: "Starter",
+              price: "297",
+              note: "For the self-directed participant.",
+              items: [
+                "Complete 12-module program",
+                "Personalized Identity Profile",
+                "Accountability partner matching",
+                "Community and messaging access",
+                "Email support",
+              ],
+            },
+            {
+              name: "Premium",
+              price: "597",
+              note: "For insight with expert feedback.",
+              featured: true,
+              items: [
+                "Everything in Starter",
+                "Human-reviewed Identity Profile",
+                "One coaching touchpoint with Shawn",
+                "Priority support",
+                "Profile refinement guidance",
+              ],
+            },
+            {
+              name: "VIP",
+              price: "997",
+              note: "For a fully supported process.",
+              items: [
+                "Everything in Premium",
+                "Fully custom profile review",
+                "Extended coaching access",
+                "Lifetime profile updates",
+                "First access to Able Society",
+              ],
+            },
+          ].map((tier, index) => (
+            <article
+              className={`price-card reveal ${tier.featured ? "featured" : ""}`}
+              key={tier.name}
+            >
+              {tier.featured && <span className="popular">Most popular</span>}
+              <span className="price-index">0{index + 1}</span>
+              <h3>{tier.name}</h3>
+              <p>{tier.note}</p>
+              <div className="price">
+                <span>$</span>
+                {tier.price}
+              </div>
+              <ul>
+                {tier.items.map((item) => (
+                  <li key={item}>
+                    <span>✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <a
+                className={`button ${tier.featured ? "primary" : "dark-outline"}`}
+                href="#"
+              >
+                Choose {tier.name} <Arrow />
+              </a>
+            </article>
+          ))}
         </div>
         <p className="payment-note reveal">
-          One-time payment or three installments. Program enrollment is separate
-          from Able1Self garments.
+          One-time payment or three installments available.
         </p>
       </section>
 
-      <section className="faq section-bone" id="faq">
-        <div className="faq-head">
-          <div className="section-index reveal">08 / Questions</div>
-          <p className="eyebrow dark reveal">Before you begin</p>
+      <section className="faq-section" id="faq">
+        <div className="faq-heading">
+          <span className="section-label reveal">08 / Questions</span>
           <h2 className="reveal">
-            Clarity,
-            <em>before commitment.</em>
+            What you need to know
+            <span>before you begin.</span>
           </h2>
         </div>
         <div className="faq-list">
           {faqs.map((faq, index) => (
-            <details className="reveal" key={faq.q}>
+            <details className="reveal" key={faq.question}>
               <summary>
                 <span>0{index + 1}</span>
-                {faq.q}
-                <i aria-hidden="true">+</i>
+                {faq.question}
+                <i>+</i>
               </summary>
-              <p>{faq.a}</p>
+              <p>{faq.answer}</p>
             </details>
           ))}
         </div>
       </section>
 
-      <section className="finale">
-        <div className="finale-media" aria-hidden="true">
-          <img src="/images/fabric-macro.webp" alt="" />
+      <section className="final-cta">
+        <div className="final-grid" aria-hidden="true" />
+        <div className="final-orbit" aria-hidden="true">
+          <span>A</span>
+          <span>B</span>
+          <span>L</span>
+          <span>E</span>
         </div>
-        <div className="film-grain" />
-        <div className="finale-content">
-          <p className="eyebrow reveal">The only luxury is evolution</p>
+        <div className="final-content">
+          <span className="section-label light reveal">Your next move starts here</span>
           <h2 className="reveal">
-            Become
-            <em>one self.</em>
+            Understand who you are.
+            <span>Build from there.</span>
           </h2>
           <p className="reveal">
-            Stop performing someone else&apos;s version of success. The next
-            chapter begins with the truth.
+            Join the next Able1Self cohort and turn insight into a direction you
+            can act on.
           </p>
-          <a className="button button-gold reveal" href="#access">
-            Start your ABLE journey <ArrowIcon />
+          <a className="button primary reveal" href="#access">
+            Start your ABLE journey <Arrow />
           </a>
         </div>
       </section>
 
       <footer>
-        <div className="footer-top">
-          <Wordmark />
-          <p>The uniform of personal evolution.</p>
-          <a href="#top">Return to top ↑</a>
+        <div className="footer-brand">
+          <Logo />
+          <p>A practical system for personal evolution.</p>
         </div>
-        <div className="footer-grid">
+        <div className="footer-links">
           <div>
             <span>Program</span>
-            <a href="#framework">The ABLE Framework</a>
+            <a href="#framework">Framework</a>
+            <a href="#profile">Identity Profile</a>
             <a href="#program">Curriculum</a>
             <a href="#access">Pricing</a>
-            <a href="#faq">FAQ</a>
           </div>
           <div>
-            <span>World</span>
-            <a href="#">Bespoke consultation</a>
-            <a href="#">Explore A19</a>
-            <a href="#">A1 Forever</a>
-            <a href="#">A1 Members Only</a>
+            <span>About</span>
+            <a href="#founder">Shawn Daniels</a>
+            <a href="#faq">FAQ</a>
+            <a href="#">Log in</a>
           </div>
           <div>
             <span>Legal</span>
@@ -814,7 +854,7 @@ export default function Home() {
         </div>
         <div className="footer-bottom">
           <span>© 2026 Able1Self. All rights reserved.</span>
-          <span>Designed for becoming.</span>
+          <a href="#top">Back to top ↑</a>
         </div>
       </footer>
     </main>
