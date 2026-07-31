@@ -20,8 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     icons: {
-      icon: "/favicon.png",
-      shortcut: "/favicon.png",
+      icon: "/able1self-logo.png",
+      shortcut: "/able1self-logo.png",
     },
     openGraph: {
       title,
@@ -30,8 +30,8 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [
         {
           url: `${origin}/og.png`,
-          width: 1731,
-          height: 908,
+          width: 1733,
+          height: 907,
           alt: "Able1Self — Know yourself. Build what comes next.",
         },
       ],

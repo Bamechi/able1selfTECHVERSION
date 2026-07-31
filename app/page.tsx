@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from "react";
 
@@ -114,9 +115,33 @@ function Arrow() {
 function Logo() {
   return (
     <a className="logo" href="#top" aria-label="Able1Self home">
-      <span className="logo-mark">A1</span>
-      <span>ABLE1SELF</span>
+      <img
+        className="brand-symbol"
+        src="/able1self-logo.png"
+        alt=""
+        aria-hidden="true"
+      />
+      <span className="brand-name">ABLE1SELF</span>
     </a>
+  );
+}
+
+function IntroSequence() {
+  return (
+    <div className="intro-sequence" aria-hidden="true">
+      <div className="intro-orb intro-orb-one" />
+      <div className="intro-orb intro-orb-two" />
+      <div className="intro-glass">
+        <img src="/able1self-logo.png" alt="" />
+      </div>
+      <p>
+        <span>ANALYZE</span>
+        <span>BRAND</span>
+        <span>LEVERAGE</span>
+        <span>EMBARK</span>
+      </p>
+      <div className="intro-wipe" />
+    </div>
   );
 }
 
@@ -146,16 +171,14 @@ function PlatformPreview() {
     <div className="platform-preview reveal">
       <div className="preview-grid" aria-hidden="true" />
       <div className="photo-panel">
-        {/* vinext serves this local WebP directly without an optimization proxy. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/images/shawn-daniels.webp"
-          alt="Shawn Daniels, founder of Able1Self"
+          alt="Shawn Daniels standing with confidence and clarity"
         />
         <div className="photo-shade" />
         <div className="photo-tag">
-          <span>Founder</span>
-          <strong>Shawn Daniels</strong>
+          <span>The transformation</span>
+          <strong>Clear. Positioned. In motion.</strong>
         </div>
       </div>
 
@@ -186,8 +209,8 @@ function PlatformPreview() {
       </div>
 
       <div className="system-card next-action">
-        <span className="card-label">Next action</span>
-        <strong>Complete your energy map</strong>
+        <span className="card-label">Future state</span>
+        <strong>Operating from self-knowledge</strong>
         <span className="action-arrow">→</span>
       </div>
 
@@ -324,8 +347,17 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [audience, setAudience] = useState<Audience>("entrepreneur");
   const [activeStage, setActiveStage] = useState(0);
+  const [introVisible, setIntroVisible] = useState(true);
 
   useEffect(() => {
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const introTimer = window.setTimeout(
+      () => setIntroVisible(false),
+      reducedMotion ? 200 : 3200,
+    );
+
     const elements = document.querySelectorAll<HTMLElement>(".reveal");
     const observer = new IntersectionObserver(
       (entries) => {
@@ -340,7 +372,10 @@ export default function Home() {
     );
 
     elements.forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(introTimer);
+      observer.disconnect();
+    };
   }, []);
 
   const selectedAudience = audiences[audience];
@@ -348,6 +383,7 @@ export default function Home() {
 
   return (
     <main>
+      {introVisible && <IntroSequence />}
       <header className="site-header">
         <Logo />
         <nav className={menuOpen ? "open" : ""} aria-label="Primary navigation">
@@ -576,17 +612,13 @@ export default function Home() {
       </section>
 
       <section className="founder-section" id="founder">
-        <div className="founder-photo reveal">
-          {/* vinext serves this local WebP directly without an optimization proxy. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/shawn-daniels.webp"
-            alt="Shawn Daniels, founder of Able1Self"
-          />
-          <div>
-            <span>Founder / Designer / Strategist</span>
-            <strong>Shawn Daniels</strong>
+        <div className="founder-signal reveal">
+          <div className="founder-symbol-glass">
+            <img src="/able1self-logo.png" alt="" aria-hidden="true" />
           </div>
+          <span>DESIGNED FROM LIVED EXPERIENCE</span>
+          <strong>Shawn Daniels</strong>
+          <p>Founder · Designer · Strategist</p>
         </div>
         <div className="founder-copy">
           <span className="section-label light reveal">04 / Why Shawn built it</span>

@@ -46,6 +46,8 @@ test("server-renders the finished Able1Self experience and metadata", async () =
   assert.match(html, /Personalized Identity Profile/);
   assert.match(html, /The Room/);
   assert.match(html, /Shawn Daniels/);
+  assert.match(html, /able1self-logo\.png/);
+  assert.match(html, /The transformation/);
   assert.match(html, /Starter/);
   assert.match(html, /Premium/);
   assert.match(html, /VIP/);
@@ -53,7 +55,7 @@ test("server-renders the finished Able1Self experience and metadata", async () =
     html,
     /<meta property="og:image" content="https:\/\/able1self\.example\/og\.png"\/>/i,
   );
-  assert.match(html, /<link rel="icon" href="\/favicon\.png"\/>/i);
+  assert.match(html, /<link rel="icon" href="\/able1self-logo\.png"\/>/i);
   assert.doesNotMatch(
     html,
     /dress the part|self-awareness becomes a wardrobe|style archetype/i,
@@ -70,10 +72,13 @@ test("ships the app-like system, real founder image, and accessible fallbacks", 
   ]);
 
   assert.match(page, /IntersectionObserver/);
+  assert.match(page, /IntroSequence/);
+  assert.match(page, /3200/);
   assert.match(page, /useState<Audience>/);
   assert.match(page, /role="tablist"/);
   assert.match(page, /aria-label="Toggle navigation"/);
   assert.match(page, /shawn-daniels\.webp/);
+  assert.equal(page.match(/shawn-daniels\.webp/g)?.length, 1);
   assert.doesNotMatch(page, /<canvas|FRAME_COUNT|requestAnimationFrame|\/frames\//);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /@media \(max-width: 760px\)/);
@@ -83,7 +88,7 @@ test("ships the app-like system, real founder image, and accessible fallbacks", 
 
   await Promise.all([
     access(new URL("../public/og.png", import.meta.url)),
-    access(new URL("../public/favicon.png", import.meta.url)),
+    access(new URL("../public/able1self-logo.png", import.meta.url)),
     access(new URL("../public/images/shawn-daniels.webp", import.meta.url)),
     access(new URL("../public/fonts/manrope.woff2", import.meta.url)),
   ]);
