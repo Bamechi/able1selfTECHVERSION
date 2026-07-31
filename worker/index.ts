@@ -7,7 +7,11 @@ interface Env {
   DB: D1Database;
   DEMO_LOGIN_EMAIL?: string;
   DEMO_LOGIN_PASSWORD?: string;
+  PREVIEW_ACCOUNTS_JSON?: string;
   AUTH_SESSION_SECRET?: string;
+  SUPABASE_URL?: string;
+  SUPABASE_PUBLISHABLE_KEY?: string;
+  SUPABASE_ANON_KEY?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {

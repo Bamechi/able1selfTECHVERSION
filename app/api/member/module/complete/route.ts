@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const data = await updateMemberData(session.email, {
       action: "complete_module",
       moduleKey: payload.moduleKey,
-    });
+    }, session.name);
     return Response.json({
       ok: true,
       progress: data.progress,

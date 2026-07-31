@@ -1,5 +1,10 @@
 import { createSessionCookie } from "../../../../lib/auth-session";
+import { configuredPreviewAccounts } from "../../../../lib/auth-accounts";
 import { getRuntimeEnv } from "../../../../lib/runtime";
+import {
+  isSupabaseConfigured,
+  signInWithSupabase,
+} from "../../../../lib/supabase-auth";
 
 function constantTimeEqual(value: string, expected: string) {
   const length = Math.max(value.length, expected.length);
@@ -19,43 +24,58 @@ export async function POST(request: Request) {
     password?: string;
   };
   const runtime = getRuntimeEnv() ?? {};
-  const expectedEmail = runtime.DEMO_LOGIN_EMAIL?.trim().toLowerCase();
-  const expectedPassword = runtime.DEMO_LOGIN_PASSWORD ?? "";
   const email = payload.email?.trim().toLowerCase() ?? "";
   const password = payload.password ?? "";
 
-  if (!expectedEmail || !expectedPassword) {
+  if (!email || !password) {
     return Response.json(
-      { ok: false, error: "The preview account is not configured." },
-      { status: 503 },
-    );
-  }
-
-  if (
-    !constantTimeEqual(email, expectedEmail) ||
-    !constantTimeEqual(password, expectedPassword)
-  ) {
-    return Response.json(
-      { ok: false, error: "Email or password is incorrect." },
-      { status: 401 },
+      { ok: false, error: "Enter your email and password." },
+      { status: 400 },
     );
   }
 
   try {
-    const cookie = await createSessionCookie(email, request);
+    let account: { email: string; name: string } | undefined;
+    if (isSupabaseConfigured()) {
+      account = await signInWithSupabase(email, password);
+    } else {
+      const preview = configuredPreviewAccounts(runtime).find((candidate) =>
+        constantTimeEqual(candidate.email, email),
+      );
+      if (!preview || !constantTimeEqual(preview.password, password)) {
+        return Response.json(
+          { ok: false, error: "Email or password is incorrect." },
+          { status: 401 },
+        );
+      }
+      account = { email: preview.email, name: preview.name };
+    }
+
+    const cookie = await createSessionCookie(
+      account.email,
+      request,
+      account.name,
+    );
     return Response.json(
       {
         ok: true,
         user: {
-          email,
-          name: "Amechi",
+          email: account.email,
+          name: account.name,
         },
       },
       { headers: { "set-cookie": cookie } },
     );
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (/invalid|credentials|password|email/i.test(message)) {
+      return Response.json(
+        { ok: false, error: "Email or password is incorrect." },
+        { status: 401 },
+      );
+    }
     return Response.json(
-      { ok: false, error: "Secure member sessions are not configured." },
+      { ok: false, error: "Secure member access is temporarily unavailable." },
       { status: 503 },
     );
   }

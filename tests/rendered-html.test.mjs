@@ -16,6 +16,23 @@ function runtimeEnv() {
     },
     DEMO_LOGIN_EMAIL: "amechi@addcoloremdia.com",
     DEMO_LOGIN_PASSWORD: "test-preview-password",
+    PREVIEW_ACCOUNTS_JSON: JSON.stringify([
+      {
+        email: "amechi@addcoloremdia.com",
+        password: "test-preview-password",
+        name: "Amechi",
+      },
+      {
+        email: "shawndaniels2015@gmail.com",
+        password: "test-preview-password",
+        name: "Shawn Daniels",
+      },
+      {
+        email: "19keys@19keys.com",
+        password: "test-preview-password",
+        name: "19Keys",
+      },
+    ]),
     AUTH_SESSION_SECRET: "test-session-secret-with-at-least-32-characters",
   };
 }
@@ -117,20 +134,20 @@ test("ships the app-like system, real founder image, and accessible fallbacks", 
   ]);
 });
 
-test("accepts the configured preview account and rejects invalid credentials", async () => {
+test("accepts every configured preview account and rejects invalid credentials", async () => {
   const worker = await loadWorker();
-  const request = (password) =>
+  const request = (email, password) =>
     new Request("https://able1self.example/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        email: "amechi@addcoloremdia.com",
+        email,
         password,
       }),
     });
 
   const accepted = await worker.fetch(
-    request("test-preview-password"),
+    request("amechi@addcoloremdia.com", "test-preview-password"),
     runtimeEnv(),
     executionContext(),
   );
@@ -153,6 +170,21 @@ test("accepts the configured preview account and rejects invalid credentials", a
   assert.equal(sessionData.authenticated, true);
   assert.equal(sessionData.user.email, "amechi@addcoloremdia.com");
 
+  for (const [email, name] of [
+    ["shawndaniels2015@gmail.com", "Shawn Daniels"],
+    ["19keys@19keys.com", "19Keys"],
+  ]) {
+    const accountResponse = await worker.fetch(
+      request(email, "test-preview-password"),
+      runtimeEnv(),
+      executionContext(),
+    );
+    assert.equal(accountResponse.status, 200);
+    const accountData = await accountResponse.json();
+    assert.equal(accountData.user.email, email);
+    assert.equal(accountData.user.name, name);
+  }
+
   const logout = await worker.fetch(
     new Request("https://able1self.example/api/auth/logout", {
       method: "POST",
@@ -165,7 +197,7 @@ test("accepts the configured preview account and rejects invalid credentials", a
   assert.match(logout.headers.get("set-cookie") ?? "", /Max-Age=0/i);
 
   const rejected = await worker.fetch(
-    request("incorrect"),
+    request("amechi@addcoloremdia.com", "incorrect"),
     runtimeEnv(),
     executionContext(),
   );
@@ -226,6 +258,7 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
   assert.match(memberPage, /CORE IDENTITY/);
   assert.match(memberPage, /AI GUIDE/);
   assert.match(memberPage, /Revisit key questions/);
+  assert.match(memberPage, /PROFILE IN PROGRESS/);
   assert.equal(
     (programData.match(/scoring: "(?:SCORED|FLAVOR|DERIVED)"/g) ?? []).length,
     72,
@@ -236,6 +269,7 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
   assert.match(store, /ON CONFLICT\(member_id, question_key\)/);
   assert.match(store, /persistAssembledProfile/);
   assert.match(store, /mark_notifications_read/);
+  assert.match(store, /displayNameFromEmail/);
   assert.match(schema, /surveyResponses/);
   assert.match(schema, /identityResults/);
   assert.match(schema, /profileSections/);

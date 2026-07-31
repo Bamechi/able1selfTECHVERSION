@@ -1,3 +1,5 @@
+import { requestSupabasePasswordReset } from "../../../../lib/supabase-auth";
+
 export async function POST(request: Request) {
   const payload = (await request.json()) as { email?: string };
   const email = payload.email?.trim() ?? "";
@@ -9,9 +11,22 @@ export async function POST(request: Request) {
     );
   }
 
-  return Response.json({
-    ok: true,
-    message:
-      "Reset request received. Email delivery will activate before public launch.",
-  });
+  try {
+    const sent = await requestSupabasePasswordReset(
+      email,
+      `${new URL(request.url).origin}/reset-password`,
+    );
+    return Response.json({
+      ok: true,
+      message: sent
+        ? "Check your inbox for a secure password reset link."
+        : "This preview account uses the temporary password supplied by the Able1Self team.",
+    });
+  } catch {
+    // Keep the response generic so account existence cannot be enumerated.
+    return Response.json({
+      ok: true,
+      message: "If that account exists, a secure reset link is on its way.",
+    });
+  }
 }

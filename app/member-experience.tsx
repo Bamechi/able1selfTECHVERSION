@@ -3,7 +3,7 @@
 
 import { FormEvent, useState } from "react";
 
-type AuthMode = "login" | "forgot";
+type AuthMode = "login" | "forgot" | "signup";
 type PortalView =
   | "overview"
   | "program"
@@ -20,7 +20,8 @@ export function AuthModal({
   onAuthenticated: (email: string) => void;
 }) {
   const [mode, setMode] = useState<AuthMode>("login");
-  const [email, setEmail] = useState("amechi@addcoloremdia.com");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
@@ -35,12 +36,18 @@ export function AuthModal({
       const response = await fetch(
         mode === "login"
           ? "/api/auth/login"
-          : "/api/auth/forgot-password",
+          : mode === "signup"
+            ? "/api/auth/signup"
+            : "/api/auth/forgot-password",
         {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(
-            mode === "login" ? { email, password } : { email },
+            mode === "forgot"
+              ? { email }
+              : mode === "signup"
+                ? { name, email, password }
+                : { email, password },
           ),
         },
       );
@@ -48,6 +55,7 @@ export function AuthModal({
         ok?: boolean;
         error?: string;
         message?: string;
+        authenticated?: boolean;
       };
 
       if (!response.ok || !result.ok) {
@@ -55,12 +63,12 @@ export function AuthModal({
         return;
       }
 
-      if (mode === "login") {
+      if (mode === "login" || (mode === "signup" && result.authenticated)) {
         onAuthenticated(email);
       } else {
         setMessage(
           result.message ??
-            "Reset request received. Email delivery will activate before public launch.",
+            "Check your inbox for the next secure step.",
         );
       }
     } catch {
@@ -78,7 +86,7 @@ export function AuthModal({
         aria-label="Close sign in"
         onClick={onClose}
       />
-      <section className="auth-panel">
+      <section className={`auth-panel auth-panel-${mode}`}>
         <div className="auth-ambient" aria-hidden="true" />
         <header className="auth-header">
           <a className="auth-brand" href="#top" onClick={onClose}>
@@ -97,19 +105,40 @@ export function AuthModal({
 
         <div className="auth-copy">
           <span className="auth-kicker">
-            {mode === "login" ? "MEMBER ACCESS" : "ACCOUNT RECOVERY"}
+            {mode === "login"
+              ? "MEMBER ACCESS"
+              : mode === "signup"
+                ? "CREATE YOUR ACCOUNT"
+                : "ACCOUNT RECOVERY"}
           </span>
           <h2>
-            {mode === "login" ? "Continue your evolution." : "Reset your access."}
+            {mode === "login"
+              ? "Continue your evolution."
+              : mode === "signup"
+                ? "Begin with clarity."
+                : "Reset your access."}
           </h2>
           <p>
             {mode === "login"
               ? "Return to your profile, program progress, community, and next action."
-              : "Enter your account email. We’ll prepare a secure reset request."}
+              : mode === "signup"
+                ? "Create a secure member profile. Your answers and progress will stay connected to this account."
+                : "Enter your account email. We’ll send a secure reset link."}
           </p>
         </div>
 
         <form className="auth-form" onSubmit={submit}>
+          {mode === "signup" && (
+            <label>
+              <span>Your name</span>
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                autoComplete="name"
+                required
+              />
+            </label>
+          )}
           <label>
             <span>Email address</span>
             <input
@@ -121,7 +150,7 @@ export function AuthModal({
             />
           </label>
 
-          {mode === "login" && (
+          {mode !== "forgot" && (
             <label>
               <span>Password</span>
               <div className="password-field">
@@ -129,7 +158,8 @@ export function AuthModal({
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  autoComplete="current-password"
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                  minLength={mode === "signup" ? 8 : undefined}
                   required
                 />
                 <button
@@ -166,11 +196,26 @@ export function AuthModal({
               ? "Working…"
               : mode === "login"
                 ? "Enter member portal →"
-                : "Request reset →"}
+                : mode === "signup"
+                  ? "Create account →"
+                  : "Request reset →"}
           </button>
         </form>
 
-        {mode === "forgot" && (
+        {mode === "login" && (
+          <button
+            className="auth-return auth-create"
+            type="button"
+            onClick={() => {
+              setMode("signup");
+              setMessage("");
+            }}
+          >
+            New to Able1Self? Create an account →
+          </button>
+        )}
+
+        {mode !== "login" && (
           <button
             className="auth-return"
             type="button"

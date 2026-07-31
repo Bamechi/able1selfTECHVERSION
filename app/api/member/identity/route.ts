@@ -4,7 +4,7 @@ import { getMemberData } from "../../../../lib/member-store";
 export async function GET(request: Request) {
   try {
     const session = await requireSession(request);
-    const data = await getMemberData(session.email);
+    const data = await getMemberData(session.email, session.name);
     return Response.json({ ok: true, identity: data.identity });
   } catch (error) {
     if (error instanceof Response) return error;

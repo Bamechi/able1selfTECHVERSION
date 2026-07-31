@@ -12,7 +12,8 @@ import {
   programModules,
   requiredQuestionKeys,
 } from "./program-data";
-import { getD1 } from "./runtime";
+import { previewAccountForEmail, displayNameFromEmail } from "./auth-accounts";
+import { getD1, getRuntimeEnv } from "./runtime";
 
 type ProfileRow = {
   id: number;
@@ -216,24 +217,29 @@ function rowsToAnswers(rows: ResponseRow[]): AnswerSet {
   );
 }
 
-async function ensurePilot(email: string) {
+async function ensurePilot(email: string, preferredName?: string) {
   await ensureSchema();
   const db = getD1();
   const now = new Date().toISOString();
+  const runtime = getRuntimeEnv() ?? {};
+  const defaultName =
+    preferredName?.trim() ||
+    previewAccountForEmail(runtime, email)?.name ||
+    displayNameFromEmail(email);
   await db
     .prepare(
       `INSERT OR IGNORE INTO member_profiles
        (email, display_name, created_at, updated_at)
-       VALUES (?, 'Amechi', ?, ?)`,
+       VALUES (?, ?, ?, ?)`,
     )
-    .bind(email, now, now)
+    .bind(email, defaultName, now, now)
     .run();
 
   const profile = await db
     .prepare("SELECT * FROM member_profiles WHERE email = ?")
     .bind(email)
     .first<ProfileRow>();
-  if (!profile) throw new Error("Unable to initialize the pilot profile.");
+  if (!profile) throw new Error("Unable to initialize the member profile.");
 
   await db
     .prepare(
@@ -409,7 +415,7 @@ async function ensurePilot(email: string) {
         )
         .bind(
           profile.id,
-          "Your pilot is ready",
+          "Your profile is ready",
           "Begin with Analyze · Know Your Type. Every answer will save automatically.",
           now,
         ),
@@ -534,8 +540,8 @@ function parseJson<T>(value: string | undefined, fallback: T): T {
   }
 }
 
-export async function getMemberData(email: string) {
-  const profile = await ensurePilot(email);
+export async function getMemberData(email: string, preferredName?: string) {
+  const profile = await ensurePilot(email, preferredName);
   const db = getD1();
   const [
     progressResult,
@@ -747,8 +753,12 @@ type MemberAction = {
   communityNotifications?: boolean;
 };
 
-export async function updateMemberData(email: string, payload: MemberAction) {
-  const profile = await ensurePilot(email);
+export async function updateMemberData(
+  email: string,
+  payload: MemberAction,
+  preferredName?: string,
+) {
+  const profile = await ensurePilot(email, preferredName);
   const db = getD1();
   const now = new Date().toISOString();
 
@@ -907,7 +917,7 @@ export async function updateMemberData(email: string, payload: MemberAction) {
          bio = ?, updated_at = ? WHERE id = ?`,
       )
       .bind(
-        payload.displayName?.trim() || "Amechi",
+        payload.displayName?.trim() || profile.display_name,
         payload.professionalTitle?.trim() ?? "",
         payload.bio?.trim() ?? "",
         now,
@@ -999,5 +1009,5 @@ export async function updateMemberData(email: string, payload: MemberAction) {
     throw new Error("Unsupported member action.");
   }
 
-  return getMemberData(email);
+  return getMemberData(email, preferredName);
 }

@@ -1,10 +1,13 @@
 import { getRuntimeEnv } from "./runtime";
+import { displayNameFromEmail, previewAccountForEmail } from "./auth-accounts";
+import { isSupabaseConfigured } from "./supabase-auth";
 
 const COOKIE_NAME = "able1self_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 7;
 
 type SessionPayload = {
   email: string;
+  name?: string;
   expiresAt: number;
 };
 
@@ -46,13 +49,18 @@ function constantTimeEqual(value: string, expected: string) {
   return difference === 0;
 }
 
-export async function createSessionCookie(email: string, request: Request) {
+export async function createSessionCookie(
+  email: string,
+  request: Request,
+  name?: string,
+) {
   const secret = getRuntimeEnv()?.AUTH_SESSION_SECRET;
   if (!secret || secret.length < 32) {
     throw new Error("The session secret is not configured securely.");
   }
   const payload: SessionPayload = {
     email,
+    name: name?.trim() || displayNameFromEmail(email),
     expiresAt: Date.now() + SESSION_SECONDS * 1000,
   };
   const encoded = encode(JSON.stringify(payload));
@@ -78,9 +86,8 @@ function readCookie(request: Request, name: string) {
 export async function getSession(request: Request) {
   const runtime = getRuntimeEnv();
   const secret = runtime?.AUTH_SESSION_SECRET;
-  const expectedEmail = runtime?.DEMO_LOGIN_EMAIL?.trim().toLowerCase();
   const token = readCookie(request, COOKIE_NAME);
-  if (!secret || !expectedEmail || !token) return null;
+  if (!runtime || !secret || !token) return null;
 
   const [encoded, suppliedSignature] = token.split(".");
   if (!encoded || !suppliedSignature) return null;
@@ -89,13 +96,21 @@ export async function getSession(request: Request) {
 
   try {
     const payload = JSON.parse(decode(encoded)) as SessionPayload;
+    const email = payload.email.trim().toLowerCase();
+    const previewAccount = previewAccountForEmail(runtime, email);
     if (
       payload.expiresAt < Date.now() ||
-      payload.email.toLowerCase() !== expectedEmail
+      (!isSupabaseConfigured() && !previewAccount)
     ) {
       return null;
     }
-    return { email: payload.email };
+    return {
+      email,
+      name:
+        payload.name?.trim() ||
+        previewAccount?.name ||
+        displayNameFromEmail(email),
+    };
   } catch {
     return null;
   }

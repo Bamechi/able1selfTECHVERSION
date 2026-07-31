@@ -1010,6 +1010,31 @@ export default function MemberPage() {
         )}
 
         <div className="portal-content">
+          {data.profile.overallProgress < 100 && (
+            <button
+              className="portal-progress-reminder"
+              type="button"
+              onClick={() => openProgramModule(currentModule)}
+            >
+              <span>PROFILE IN PROGRESS</span>
+              <div>
+                <strong>
+                  {data.profile.completedModules === 0
+                    ? `Start with ${currentModule.title}.`
+                    : `Keep going with ${currentModule.title}.`}
+                </strong>
+                <p>
+                  Your work is saved. Continue from your next unanswered question
+                  whenever you return.
+                </p>
+              </div>
+              <em>
+                {data.profile.completedModules}/12 modules complete
+              </em>
+              <b>Continue profile →</b>
+            </button>
+          )}
+
           {error && (
             <div className="portal-alert" role="status">
               {error}
@@ -1131,8 +1156,8 @@ function Overview({
             <span>{data.profile.displayName}.</span>
           </h1>
           <p>
-            Your profile is {data.profile.overallProgress}% complete. Continue
-            with one clear next move.
+            Your profile is {data.profile.overallProgress}% complete. Every
+            completed module makes your personalized profile more useful.
           </p>
           {data.identity && (
             <button
@@ -1704,7 +1729,7 @@ function Community({
         <aside className="room-sidebar">
           <span>YOUR ROOM SIGNAL</span>
           <strong>{data.posts.length}</strong>
-          <p>saved conversations in your pilot community.</p>
+          <p>saved conversations in your private community.</p>
           <i />
           <span>ACCOUNTABILITY PARTNER</span>
           <div className="partner-card">
@@ -1740,7 +1765,7 @@ function Messages({
       <div className="portal-page-heading">
         <span className="portal-eyebrow">ACCOUNTABILITY / DIRECT MESSAGE</span>
         <h1>Keep the signal moving.</h1>
-        <p>Your pilot conversation is private to this account and saved.</p>
+        <p>Your conversation is private to this account and saved.</p>
       </div>
       <div className="message-shell live-message-shell">
         <aside>
@@ -1910,7 +1935,7 @@ function Settings({
       <div className="portal-page-heading">
         <span className="portal-eyebrow">MEMBER OS / SETTINGS</span>
         <h1>Your account.</h1>
-        <p>Manage the context and signals attached to your pilot profile.</p>
+        <p>Manage the context and signals attached to your member profile.</p>
       </div>
       <div className="settings-stack">
         <section>
@@ -1971,7 +1996,7 @@ function Settings({
             <p>Choose which signals you want active.</p>
           </header>
           {[
-            ["Module reminders", moduleReminders, setModuleReminders],
+            ["Profile progress reminders", moduleReminders, setModuleReminders],
             [
               "Accountability messages",
               messageNotifications,

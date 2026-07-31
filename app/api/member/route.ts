@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const session = await requireSession(request);
     return Response.json({
       ok: true,
-      data: await getMemberData(session.email),
+      data: await getMemberData(session.email, session.name),
     });
   } catch (error) {
     return errorResponse(error);
@@ -26,7 +26,7 @@ export async function PATCH(request: Request) {
     const payload = (await request.json()) as Record<string, unknown>;
     return Response.json({
       ok: true,
-      data: await updateMemberData(session.email, payload),
+      data: await updateMemberData(session.email, payload, session.name),
     });
   } catch (error) {
     return errorResponse(error);
