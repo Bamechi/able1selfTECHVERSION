@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from "react";
+import { AuthModal, MemberPortal } from "./member-experience";
 
 type Audience = "entrepreneur" | "corporate";
 
@@ -348,6 +349,9 @@ export default function Home() {
   const [audience, setAudience] = useState<Audience>("entrepreneur");
   const [activeStage, setActiveStage] = useState(0);
   const [introVisible, setIntroVisible] = useState(true);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [memberEmail, setMemberEmail] = useState("");
+  const [portalOpen, setPortalOpen] = useState(false);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia(
@@ -357,6 +361,12 @@ export default function Home() {
       () => setIntroVisible(false),
       reducedMotion ? 200 : 3200,
     );
+    const savedSession = window.sessionStorage.getItem(
+      "able1self-preview-session",
+    );
+    const sessionTimer = window.setTimeout(() => {
+      if (savedSession) setMemberEmail(savedSession);
+    }, 0);
 
     const elements = document.querySelectorAll<HTMLElement>(".reveal");
     const observer = new IntersectionObserver(
@@ -374,6 +384,7 @@ export default function Home() {
     elements.forEach((element) => observer.observe(element));
     return () => {
       window.clearTimeout(introTimer);
+      window.clearTimeout(sessionTimer);
       observer.disconnect();
     };
   }, []);
@@ -381,9 +392,40 @@ export default function Home() {
   const selectedAudience = audiences[audience];
   const selectedStage = stages[activeStage];
 
+  function openMemberAccess() {
+    if (memberEmail) setPortalOpen(true);
+    else setAuthOpen(true);
+  }
+
+  function authenticate(email: string) {
+    window.sessionStorage.setItem("able1self-preview-session", email);
+    setMemberEmail(email);
+    setAuthOpen(false);
+    setPortalOpen(true);
+  }
+
+  function signOut() {
+    window.sessionStorage.removeItem("able1self-preview-session");
+    setMemberEmail("");
+    setPortalOpen(false);
+  }
+
   return (
     <main>
       {introVisible && <IntroSequence />}
+      {authOpen && (
+        <AuthModal
+          onClose={() => setAuthOpen(false)}
+          onAuthenticated={authenticate}
+        />
+      )}
+      {portalOpen && (
+        <MemberPortal
+          email={memberEmail}
+          onClose={() => setPortalOpen(false)}
+          onSignOut={signOut}
+        />
+      )}
       <header className="site-header">
         <Logo />
         <nav className={menuOpen ? "open" : ""} aria-label="Primary navigation">
@@ -402,6 +444,16 @@ export default function Home() {
           <a href="#access" onClick={() => setMenuOpen(false)}>
             Pricing
           </a>
+          <button
+            className="nav-login"
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              openMemberAccess();
+            }}
+          >
+            {memberEmail ? "Dashboard" : "Log in"}
+          </button>
         </nav>
         <a className="nav-cta" href="#access">
           Start the program <Arrow />
@@ -439,9 +491,14 @@ export default function Home() {
             <a className="button primary" href="#access">
               Start your ABLE journey <Arrow />
             </a>
-            <a className="button secondary" href="#framework">
-              See how it works <span aria-hidden="true">↓</span>
-            </a>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={openMemberAccess}
+            >
+              {memberEmail ? "Open dashboard" : "Member login"}{" "}
+              <span aria-hidden="true">→</span>
+            </button>
           </div>
           <div className="built-for reveal">
             <span>Built for</span>
@@ -874,7 +931,9 @@ export default function Home() {
             <span>About</span>
             <a href="#founder">Shawn Daniels</a>
             <a href="#faq">FAQ</a>
-            <a href="#">Log in</a>
+            <button type="button" onClick={openMemberAccess}>
+              {memberEmail ? "Open dashboard" : "Log in"}
+            </button>
           </div>
           <div>
             <span>Legal</span>
