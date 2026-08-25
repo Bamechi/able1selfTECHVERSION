@@ -1,5 +1,9 @@
 import { getRuntimeEnv } from "./runtime";
-import { displayNameFromEmail, previewAccountForEmail } from "./auth-accounts";
+import {
+  displayNameFromEmail,
+  previewAccountForEmail,
+  sharedMemberAccessEnabled,
+} from "./auth-accounts";
 import { isSupabaseConfigured } from "./supabase-auth";
 
 const COOKIE_NAME = "able1self_session";
@@ -100,7 +104,9 @@ export async function getSession(request: Request) {
     const previewAccount = previewAccountForEmail(runtime, email);
     if (
       payload.expiresAt < Date.now() ||
-      (!isSupabaseConfigured() && !previewAccount)
+      (!isSupabaseConfigured() &&
+        !previewAccount &&
+        !sharedMemberAccessEnabled())
     ) {
       return null;
     }

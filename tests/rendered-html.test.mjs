@@ -204,6 +204,31 @@ test("accepts every configured preview account and rejects invalid credentials",
   assert.equal(rejected.status, 401);
   assert.equal((await rejected.json()).ok, false);
 
+  const sharedAccess = await worker.fetch(
+    request("fresh.member@example.com", "vanta"),
+    runtimeEnv(),
+    executionContext(),
+  );
+  assert.equal(sharedAccess.status, 200);
+  const sharedAccessData = await sharedAccess.json();
+  assert.equal(sharedAccessData.ok, true);
+  assert.equal(sharedAccessData.user.email, "fresh.member@example.com");
+  assert.equal(sharedAccessData.user.name, "Fresh Member");
+
+  const sharedSession = await worker.fetch(
+    new Request("https://able1self.example/api/auth/session", {
+      headers: {
+        cookie: (sharedAccess.headers.get("set-cookie") ?? "").split(";")[0],
+      },
+    }),
+    runtimeEnv(),
+    executionContext(),
+  );
+  assert.equal(sharedSession.status, 200);
+  const sharedSessionData = await sharedSession.json();
+  assert.equal(sharedSessionData.authenticated, true);
+  assert.equal(sharedSessionData.user.email, "fresh.member@example.com");
+
   const outsider = await worker.fetch(
     request("outsider@example.com", "test-preview-password"),
     runtimeEnv(),

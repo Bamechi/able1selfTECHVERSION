@@ -1,5 +1,8 @@
 import { createSessionCookie } from "../../../../lib/auth-session";
-import { configuredPreviewAccounts } from "../../../../lib/auth-accounts";
+import {
+  configuredPreviewAccounts,
+  sharedMemberAccountForEmail,
+} from "../../../../lib/auth-accounts";
 import { getRuntimeEnv } from "../../../../lib/runtime";
 import {
   isSupabaseConfigured,
@@ -36,8 +39,11 @@ export async function POST(request: Request) {
 
   try {
     let account: { email: string; name: string } | undefined;
+    const sharedAccount = sharedMemberAccountForEmail(email, password);
     const pilotAccounts = configuredPreviewAccounts(runtime);
-    if (pilotAccounts.length > 0) {
+    if (sharedAccount) {
+      account = sharedAccount;
+    } else if (pilotAccounts.length > 0) {
       const preview = pilotAccounts.find((candidate) =>
         constantTimeEqual(candidate.email, email),
       );

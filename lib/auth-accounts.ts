@@ -6,6 +6,8 @@ export type AbleAccount = {
   name: string;
 };
 
+const SHARED_MEMBER_PASSWORD = "vanta";
+
 export function displayNameFromEmail(email: string) {
   const local = email.split("@")[0] ?? "Member";
   return local
@@ -61,4 +63,24 @@ export function previewAccountForEmail(runtime: AbleRuntimeEnv, email: string) {
   return configuredPreviewAccounts(runtime).find(
     (account) => account.email === normalized,
   );
+}
+
+export function sharedMemberAccessEnabled() {
+  return Boolean(SHARED_MEMBER_PASSWORD);
+}
+
+export function sharedMemberAccountForEmail(email: string, password: string) {
+  const normalized = email.trim().toLowerCase();
+  if (
+    !normalized ||
+    !normalized.includes("@") ||
+    password !== SHARED_MEMBER_PASSWORD
+  ) {
+    return null;
+  }
+
+  return {
+    email: normalized,
+    name: displayNameFromEmail(normalized),
+  };
 }
