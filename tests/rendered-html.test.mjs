@@ -1,6 +1,111 @@
 import assert from "node:assert/strict";
+import { createHash, pbkdf2Sync } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
+
+const TEST_PASSWORDS = new Map([
+  ["amechi@addcolormedia.com", "amechi-test-password"],
+  ["shawndaniels2015@gmail.com", "shawn-test-password"],
+  ["19keys@19keys.com", "keys-test-password"],
+]);
+
+function passwordRecord(email, name, role = "member") {
+  const password = TEST_PASSWORDS.get(email);
+  const salt = Buffer.from(`able1self:${email}`).subarray(0, 16);
+  return {
+    email,
+    display_name: name,
+    password_hash: pbkdf2Sync(password, salt, 210_000, 32, "sha256").toString(
+      "base64url",
+    ),
+    password_salt: salt.toString("base64url"),
+    password_iterations: 210_000,
+    role,
+    status: "active",
+    force_password_reset: 1,
+  };
+}
+
+function createAuthDatabase() {
+  const accounts = new Map([
+    [
+      "amechi@addcolormedia.com",
+      passwordRecord("amechi@addcolormedia.com", "Amechi", "admin"),
+    ],
+    [
+      "shawndaniels2015@gmail.com",
+      passwordRecord("shawndaniels2015@gmail.com", "Shawn Daniels"),
+    ],
+    ["19keys@19keys.com", passwordRecord("19keys@19keys.com", "19Keys")],
+  ]);
+  const inviteCode = "ABLE-COMP-TEST";
+  const inviteHash = createHash("sha256")
+    .update(inviteCode)
+    .digest("base64url");
+  const invites = new Map([
+    [
+      inviteHash,
+      {
+        id: 1,
+        email: "invited@example.com",
+        role: "member",
+        max_uses: 1,
+        uses: 0,
+        expires_at: null,
+      },
+    ],
+  ]);
+
+  function prepare(sql) {
+    let values = [];
+    const statement = {
+      bind(...args) {
+        values = args;
+        return statement;
+      },
+      async first() {
+        if (sql.includes("FROM member_accounts")) {
+          const account = accounts.get(String(values[0]).toLowerCase());
+          return account?.status === "active" ? account : null;
+        }
+        if (sql.includes("FROM invite_codes")) {
+          return invites.get(String(values[0])) ?? null;
+        }
+        return null;
+      },
+      async run() {
+        if (sql.includes("INSERT INTO member_accounts")) {
+          const [email, displayName, hash, salt, iterations, role] = values;
+          accounts.set(String(email), {
+            email,
+            display_name: displayName,
+            password_hash: hash,
+            password_salt: salt,
+            password_iterations: iterations,
+            role,
+            status: "active",
+            force_password_reset: 0,
+          });
+        }
+        if (sql.includes("UPDATE invite_codes")) {
+          const invite = [...invites.values()].find((item) => item.id === values[2]);
+          if (invite) invite.uses += 1;
+        }
+        return { meta: { changes: 1 } };
+      },
+    };
+    return statement;
+  }
+
+  return {
+    prepare,
+    async batch(statements) {
+      return Promise.all(statements.map((statement) => statement.run()));
+    },
+  };
+}
+
+const authDatabase = createAuthDatabase();
 
 async function loadWorker() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -14,25 +119,7 @@ function runtimeEnv() {
     ASSETS: {
       fetch: async () => new Response("Not found", { status: 404 }),
     },
-    DEMO_LOGIN_EMAIL: "amechi@addcolormedia.com",
-    DEMO_LOGIN_PASSWORD: "test-preview-password",
-    PREVIEW_ACCOUNTS_JSON: JSON.stringify([
-      {
-        email: "amechi@addcolormedia.com",
-        password: "test-preview-password",
-        name: "Amechi",
-      },
-      {
-        email: "shawndaniels2015@gmail.com",
-        password: "test-preview-password",
-        name: "Shawn Daniels",
-      },
-      {
-        email: "19keys@19keys.com",
-        password: "test-preview-password",
-        name: "19Keys",
-      },
-    ]),
+    DB: authDatabase,
     AUTH_SESSION_SECRET: "test-session-secret-with-at-least-32-characters",
   };
 }
@@ -144,7 +231,7 @@ test("ships the app-like system, real founder image, and accessible fallbacks", 
   ]);
 });
 
-test("accepts every configured preview account and rejects invalid credentials", async () => {
+test("accepts seeded accounts and rejects shared or invalid credentials", async () => {
   const worker = await loadWorker();
   const request = (email, password) =>
     new Request("https://able1self.example/api/auth/login", {
@@ -157,7 +244,10 @@ test("accepts every configured preview account and rejects invalid credentials",
     });
 
   const accepted = await worker.fetch(
-    request("amechi@addcolormedia.com", "test-preview-password"),
+    request(
+      "amechi@addcolormedia.com",
+      TEST_PASSWORDS.get("amechi@addcolormedia.com"),
+    ),
     runtimeEnv(),
     executionContext(),
   );
@@ -185,7 +275,7 @@ test("accepts every configured preview account and rejects invalid credentials",
     ["19keys@19keys.com", "19Keys"],
   ]) {
     const accountResponse = await worker.fetch(
-      request(email, "test-preview-password"),
+      request(email, TEST_PASSWORDS.get(email)),
       runtimeEnv(),
       executionContext(),
     );
@@ -219,33 +309,53 @@ test("accepts every configured preview account and rejects invalid credentials",
     runtimeEnv(),
     executionContext(),
   );
-  assert.equal(sharedAccess.status, 200);
-  const sharedAccessData = await sharedAccess.json();
-  assert.equal(sharedAccessData.ok, true);
-  assert.equal(sharedAccessData.user.email, "fresh.member@example.com");
-  assert.equal(sharedAccessData.user.name, "Fresh Member");
-
-  const sharedSession = await worker.fetch(
-    new Request("https://able1self.example/api/auth/session", {
-      headers: {
-        cookie: (sharedAccess.headers.get("set-cookie") ?? "").split(";")[0],
-      },
-    }),
-    runtimeEnv(),
-    executionContext(),
-  );
-  assert.equal(sharedSession.status, 200);
-  const sharedSessionData = await sharedSession.json();
-  assert.equal(sharedSessionData.authenticated, true);
-  assert.equal(sharedSessionData.user.email, "fresh.member@example.com");
+  assert.equal(sharedAccess.status, 401);
+  assert.equal((await sharedAccess.json()).ok, false);
 
   const outsider = await worker.fetch(
-    request("outsider@example.com", "test-preview-password"),
+    request("outsider@example.com", "outsider-password"),
     runtimeEnv(),
     executionContext(),
   );
   assert.equal(outsider.status, 401);
   assert.equal((await outsider.json()).ok, false);
+});
+
+test("requires and redeems a valid invite code for account creation", async () => {
+  const worker = await loadWorker();
+  const request = (inviteCode) =>
+    new Request("https://able1self.example/api/auth/signup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        inviteCode,
+        email: "invited@example.com",
+        name: "Invited Member",
+        password: "invited-member-password",
+      }),
+    });
+
+  const blocked = await worker.fetch(
+    request(""),
+    runtimeEnv(),
+    executionContext(),
+  );
+  assert.equal(blocked.status, 400);
+
+  const redeemed = await worker.fetch(
+    request("ABLE-COMP-TEST"),
+    runtimeEnv(),
+    executionContext(),
+  );
+  assert.equal(redeemed.status, 200);
+  assert.equal((await redeemed.json()).authenticated, true);
+
+  const replayed = await worker.fetch(
+    request("ABLE-COMP-TEST"),
+    runtimeEnv(),
+    executionContext(),
+  );
+  assert.notEqual(replayed.status, 200);
 });
 
 test("forgot-password endpoint accepts a valid reset request", async () => {
@@ -273,6 +383,8 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
     schema,
     baseMigration,
     engineMigration,
+    authMigration,
+    accountStore,
     hosting,
   ] = await Promise.all([
     readFile(new URL("../app/member/page.tsx", import.meta.url), "utf8"),
@@ -288,6 +400,11 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
       new URL("../drizzle/0001_dazzling_ikaris.sql", import.meta.url),
       "utf8",
     ),
+    readFile(
+      new URL("../drizzle/0002_complex_mister_fear.sql", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../lib/account-store.ts", import.meta.url), "utf8"),
     readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
   ]);
 
@@ -313,11 +430,20 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
   assert.match(store, /persistAssembledProfile/);
   assert.match(store, /mark_notifications_read/);
   assert.match(store, /displayNameFromEmail/);
+  assert.doesNotMatch(store, /CREATE TABLE|ensureSchema|schemaStatements/);
   assert.match(schema, /surveyResponses/);
   assert.match(schema, /identityResults/);
   assert.match(schema, /profileSections/);
+  assert.match(schema, /memberAccounts/);
+  assert.match(schema, /inviteCodes/);
   assert.match(baseMigration, /CREATE TABLE `survey_responses`/);
   assert.match(engineMigration, /CREATE TABLE `identity_results`/);
   assert.match(engineMigration, /CREATE TABLE `profile_sections`/);
+  assert.match(authMigration, /CREATE TABLE `member_accounts`/);
+  assert.match(authMigration, /CREATE TABLE `invite_codes`/);
+  assert.match(authMigration, /password_hash/);
+  assert.doesNotMatch(authMigration, /vanta/i);
+  assert.match(accountStore, /verifyPassword/);
+  assert.match(accountStore, /status = 'active'/);
   assert.equal(JSON.parse(hosting).d1, "DB");
 });

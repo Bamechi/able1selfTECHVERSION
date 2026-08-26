@@ -1,32 +1,11 @@
 import { createSessionCookie } from "../../../../lib/auth-session";
-import {
-  configuredPreviewAccounts,
-  sharedMemberAccountForEmail,
-} from "../../../../lib/auth-accounts";
-import { getRuntimeEnv } from "../../../../lib/runtime";
-import {
-  isSupabaseConfigured,
-  signInWithSupabase,
-} from "../../../../lib/supabase-auth";
-
-function constantTimeEqual(value: string, expected: string) {
-  const length = Math.max(value.length, expected.length);
-  let difference = value.length ^ expected.length;
-
-  for (let index = 0; index < length; index += 1) {
-    difference |=
-      (value.charCodeAt(index) || 0) ^ (expected.charCodeAt(index) || 0);
-  }
-
-  return difference === 0;
-}
+import { authenticateMember } from "../../../../lib/account-store";
 
 export async function POST(request: Request) {
   const payload = (await request.json()) as {
     email?: string;
     password?: string;
   };
-  const runtime = getRuntimeEnv() ?? {};
   const email = payload.email?.trim().toLowerCase() ?? "";
   const password = payload.password ?? "";
 
@@ -38,28 +17,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    let account: { email: string; name: string } | undefined;
-    const sharedAccount = sharedMemberAccountForEmail(email, password);
-    const pilotAccounts = configuredPreviewAccounts(runtime);
-    if (sharedAccount) {
-      account = sharedAccount;
-    } else if (pilotAccounts.length > 0) {
-      const preview = pilotAccounts.find((candidate) =>
-        constantTimeEqual(candidate.email, email),
-      );
-      if (!preview || !constantTimeEqual(preview.password, password)) {
-        return Response.json(
-          { ok: false, error: "Email or password is incorrect." },
-          { status: 401 },
-        );
-      }
-      account = { email: preview.email, name: preview.name };
-    } else if (isSupabaseConfigured()) {
-      account = await signInWithSupabase(email, password);
-    } else {
+    const account = await authenticateMember(email, password);
+    if (!account) {
       return Response.json(
-        { ok: false, error: "Member access is not configured yet." },
-        { status: 503 },
+        { ok: false, error: "Email or password is incorrect." },
+        { status: 401 },
       );
     }
 
@@ -74,6 +36,8 @@ export async function POST(request: Request) {
         user: {
           email: account.email,
           name: account.name,
+          role: account.role,
+          forcePasswordReset: account.forcePasswordReset,
         },
       },
       { headers: { "set-cookie": cookie } },

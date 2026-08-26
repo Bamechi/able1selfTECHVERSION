@@ -1,10 +1,6 @@
 import { getRuntimeEnv } from "./runtime";
-import {
-  displayNameFromEmail,
-  previewAccountForEmail,
-  sharedMemberAccessEnabled,
-} from "./auth-accounts";
-import { isSupabaseConfigured } from "./supabase-auth";
+import { displayNameFromEmail } from "./auth-accounts";
+import { activeAccountForEmail } from "./account-store";
 
 const COOKIE_NAME = "able1self_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 7;
@@ -101,21 +97,17 @@ export async function getSession(request: Request) {
   try {
     const payload = JSON.parse(decode(encoded)) as SessionPayload;
     const email = payload.email.trim().toLowerCase();
-    const previewAccount = previewAccountForEmail(runtime, email);
-    if (
-      payload.expiresAt < Date.now() ||
-      (!isSupabaseConfigured() &&
-        !previewAccount &&
-        !sharedMemberAccessEnabled())
-    ) {
-      return null;
-    }
+    if (payload.expiresAt < Date.now()) return null;
+    const account = await activeAccountForEmail(email);
+    if (!account) return null;
     return {
       email,
       name:
         payload.name?.trim() ||
-        previewAccount?.name ||
+        account.display_name ||
         displayNameFromEmail(email),
+      role: account.role,
+      forcePasswordReset: Boolean(account.force_password_reset),
     };
   } catch {
     return null;

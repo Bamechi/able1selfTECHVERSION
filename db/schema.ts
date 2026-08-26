@@ -17,6 +17,48 @@ export const memberProfiles = sqliteTable("member_profiles", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const memberAccounts = sqliteTable(
+  "member_accounts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull().unique(),
+    displayName: text("display_name").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    passwordSalt: text("password_salt").notNull(),
+    passwordIterations: integer("password_iterations").notNull(),
+    role: text("role").notNull().default("member"),
+    status: text("status").notNull().default("active"),
+    forcePasswordReset: integer("force_password_reset", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("idx_member_accounts_status").on(table.status)],
+);
+
+export const inviteCodes = sqliteTable(
+  "invite_codes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    codeHash: text("code_hash").notNull().unique(),
+    email: text("email"),
+    role: text("role").notNull().default("member"),
+    comped: integer("comped", { mode: "boolean" }).notNull().default(false),
+    maxUses: integer("max_uses").notNull().default(1),
+    uses: integer("uses").notNull().default(0),
+    expiresAt: text("expires_at"),
+    redeemedAt: text("redeemed_at"),
+    redeemedBy: text("redeemed_by"),
+    createdBy: text("created_by").notNull().default("system"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("idx_invite_codes_email").on(table.email),
+    index("idx_invite_codes_expiry").on(table.expiresAt),
+  ],
+);
+
 export const moduleProgress = sqliteTable(
   "module_progress",
   {

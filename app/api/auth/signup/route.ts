@@ -1,32 +1,21 @@
 import { createSessionCookie } from "../../../../lib/auth-session";
-import { configuredPreviewAccounts } from "../../../../lib/auth-accounts";
-import { getRuntimeEnv } from "../../../../lib/runtime";
-import { signUpWithSupabase } from "../../../../lib/supabase-auth";
+import { redeemInvite } from "../../../../lib/account-store";
 
 export async function POST(request: Request) {
-  const runtime = getRuntimeEnv() ?? {};
-  if (configuredPreviewAccounts(runtime).length > 0) {
-    return Response.json(
-      {
-        ok: false,
-        error: "Member access is invite-only during the pilot.",
-      },
-      { status: 403 },
-    );
-  }
-
   const payload = (await request.json()) as {
     email?: string;
     password?: string;
     name?: string;
+    inviteCode?: string;
   };
   const email = payload.email?.trim().toLowerCase() ?? "";
   const password = payload.password ?? "";
   const name = payload.name?.trim() ?? "";
+  const inviteCode = payload.inviteCode?.trim() ?? "";
 
-  if (!email || !email.includes("@") || !name) {
+  if (!email || !email.includes("@") || !name || !inviteCode) {
     return Response.json(
-      { ok: false, error: "Enter your name and a valid email address." },
+      { ok: false, error: "A valid invite code, name, and email are required." },
       { status: 400 },
     );
   }
@@ -38,19 +27,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const account = await signUpWithSupabase({
+    const account = await redeemInvite({
+      code: inviteCode,
       email,
       password,
       name,
-      redirectTo: `${new URL(request.url).origin}/auth/complete`,
     });
-    if (!account.emailConfirmed) {
-      return Response.json({
-        ok: true,
-        authenticated: false,
-        message: "Check your inbox to confirm your email, then your portal will open.",
-      });
-    }
     const cookie = await createSessionCookie(
       account.email,
       request,
@@ -67,7 +49,7 @@ export async function POST(request: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Unable to create your account right now.",
+            : "Unable to redeem this invite right now.",
       },
       { status: 400 },
     );

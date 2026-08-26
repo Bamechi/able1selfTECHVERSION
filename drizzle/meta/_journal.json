@@ -15,6 +15,13 @@
       "when": 1785491390039,
       "tag": "0001_dazzling_ikaris",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787783599560,
+      "tag": "0002_complex_mister_fear",
+      "breakpoints": true
     }
   ]
 }

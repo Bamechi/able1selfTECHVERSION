@@ -1,4 +1,4 @@
-import { displayNameFromEmail, previewAccountForEmail } from "./auth-accounts";
+import { displayNameFromEmail } from "./auth-accounts";
 import { getRuntimeEnv } from "./runtime";
 
 type SupabaseUser = {
@@ -52,7 +52,6 @@ async function readResponse(response: Response) {
 function userIdentity(user: SupabaseUser | undefined) {
   const email = user?.email?.trim().toLowerCase();
   if (!email) throw new Error("The account service did not return an email.");
-  const runtime = getRuntimeEnv() ?? {};
   const metadataName =
     typeof user?.user_metadata?.display_name === "string"
       ? user.user_metadata.display_name.trim()
@@ -63,7 +62,6 @@ function userIdentity(user: SupabaseUser | undefined) {
     email,
     name:
       metadataName ||
-      previewAccountForEmail(runtime, email)?.name ||
       displayNameFromEmail(email),
   };
 }

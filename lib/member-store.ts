@@ -12,8 +12,8 @@ import {
   programModules,
   requiredQuestionKeys,
 } from "./program-data";
-import { previewAccountForEmail, displayNameFromEmail } from "./auth-accounts";
-import { getD1, getRuntimeEnv } from "./runtime";
+import { displayNameFromEmail } from "./auth-accounts";
+import { getD1 } from "./runtime";
 
 type ProfileRow = {
   id: number;
@@ -74,119 +74,6 @@ const profileSectionKeyByModule: Record<string, string> = {
   E3: "accountability_plan",
 };
 
-const schemaStatements = [
-  `CREATE TABLE IF NOT EXISTS member_profiles (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL UNIQUE,
-    display_name TEXT NOT NULL DEFAULT 'Amechi', professional_title TEXT NOT NULL DEFAULT '',
-    bio TEXT NOT NULL DEFAULT '', current_module TEXT NOT NULL DEFAULT 'A1',
-    created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-  )`,
-  `CREATE TABLE IF NOT EXISTS module_progress (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    module_key TEXT NOT NULL, stage TEXT NOT NULL, module_order INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'not_started', progress INTEGER NOT NULL DEFAULT 0,
-    started_at TEXT, completed_at TEXT, updated_at TEXT NOT NULL
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_module_progress_member_module
-   ON module_progress(member_id, module_key)`,
-  `CREATE TABLE IF NOT EXISTS survey_responses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    module_key TEXT NOT NULL, question_key TEXT NOT NULL,
-    answer TEXT NOT NULL, updated_at TEXT NOT NULL
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_survey_responses_member_question
-   ON survey_responses(member_id, question_key)`,
-  `CREATE TABLE IF NOT EXISTS action_plan_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    title TEXT NOT NULL, due_date TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open',
-    sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-  )`,
-  `CREATE INDEX IF NOT EXISTS idx_action_plan_items_member
-   ON action_plan_items(member_id, sort_order)`,
-  `CREATE TABLE IF NOT EXISTS community_posts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL
-  )`,
-  `CREATE INDEX IF NOT EXISTS idx_community_posts_member_created
-   ON community_posts(member_id, created_at)`,
-  `CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    sender TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL
-  )`,
-  `CREATE INDEX IF NOT EXISTS idx_messages_member_created
-   ON messages(member_id, created_at)`,
-  `CREATE TABLE IF NOT EXISTS member_settings (
-    member_id INTEGER PRIMARY KEY, module_reminders INTEGER NOT NULL DEFAULT 1,
-    message_notifications INTEGER NOT NULL DEFAULT 1,
-    community_notifications INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
-  )`,
-  `CREATE TABLE IF NOT EXISTS notifications (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    title TEXT NOT NULL, body TEXT NOT NULL, is_read INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL
-  )`,
-  `CREATE INDEX IF NOT EXISTS idx_notifications_member_read
-   ON notifications(member_id, is_read, created_at)`,
-  `CREATE TABLE IF NOT EXISTS identity_results (
-    member_id INTEGER PRIMARY KEY, code TEXT NOT NULL, archetype_name TEXT NOT NULL,
-    provisional INTEGER NOT NULL DEFAULT 1, confidence INTEGER NOT NULL DEFAULT 0,
-    axes_json TEXT NOT NULL DEFAULT '[]', style_archetype TEXT NOT NULL DEFAULT '',
-    palette_json TEXT NOT NULL DEFAULT '{}', energy_json TEXT NOT NULL DEFAULT '{}',
-    income_streams_json TEXT NOT NULL DEFAULT '[]', brand_statement TEXT NOT NULL DEFAULT '',
-    engine_version TEXT NOT NULL DEFAULT '2.0', computed_at TEXT NOT NULL
-  )`,
-  `CREATE TABLE IF NOT EXISTS member_birth_data (
-    member_id INTEGER PRIMARY KEY, full_birth_name TEXT NOT NULL DEFAULT '',
-    birth_date TEXT NOT NULL DEFAULT '', birth_time TEXT NOT NULL DEFAULT '',
-    birth_city TEXT NOT NULL DEFAULT '', sun_sign TEXT NOT NULL DEFAULT '',
-    moon_sign TEXT NOT NULL DEFAULT '', rising_sign TEXT NOT NULL DEFAULT '',
-    ephemeris_status TEXT NOT NULL DEFAULT 'pending', updated_at TEXT NOT NULL
-  )`,
-  `CREATE TABLE IF NOT EXISTS profile_sections (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    section_key TEXT NOT NULL, module_key TEXT NOT NULL, stage TEXT NOT NULL,
-    title TEXT NOT NULL, locked INTEGER NOT NULL DEFAULT 1,
-    content_json TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_sections_member_section
-   ON profile_sections(member_id, section_key)`,
-  `CREATE TABLE IF NOT EXISTS profile_synthesis (
-    member_id INTEGER PRIMARY KEY, narrative TEXT NOT NULL DEFAULT '',
-    review_status TEXT NOT NULL DEFAULT 'ai_generated', reviewed_by TEXT NOT NULL DEFAULT '',
-    reviewed_at TEXT, share_enabled INTEGER NOT NULL DEFAULT 0,
-    share_token TEXT NOT NULL DEFAULT '', generated_at TEXT NOT NULL
-  )`,
-  `CREATE TABLE IF NOT EXISTS partner_matches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    candidate_id INTEGER NOT NULL, score INTEGER NOT NULL DEFAULT 0,
-    reason_json TEXT NOT NULL DEFAULT '{}', status TEXT NOT NULL DEFAULT 'suggested',
-    created_at TEXT NOT NULL
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_partner_matches_pair
-   ON partner_matches(member_id, candidate_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_partner_matches_member_score
-   ON partner_matches(member_id, score)`,
-  `CREATE TABLE IF NOT EXISTS guide_messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    role TEXT NOT NULL, body TEXT NOT NULL,
-    grounded_on_engine_version TEXT NOT NULL DEFAULT '2.0', created_at TEXT NOT NULL
-  )`,
-  `CREATE INDEX IF NOT EXISTS idx_guide_messages_member_created
-   ON guide_messages(member_id, created_at)`,
-  `CREATE TABLE IF NOT EXISTS nudge_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL,
-    nudge_type TEXT NOT NULL, channel TEXT NOT NULL, sent_at TEXT NOT NULL,
-    opened_at TEXT, converted_at TEXT
-  )`,
-  `CREATE INDEX IF NOT EXISTS idx_nudge_log_member_sent
-   ON nudge_log(member_id, sent_at)`,
-];
-
-async function ensureSchema() {
-  const db = getD1();
-  await db.batch(schemaStatements.map((statement) => db.prepare(statement)));
-}
-
 function encodeAnswer(value: AnswerValue) {
   return JSON.stringify(value);
 }
@@ -218,13 +105,10 @@ function rowsToAnswers(rows: ResponseRow[]): AnswerSet {
 }
 
 async function ensurePilot(email: string, preferredName?: string) {
-  await ensureSchema();
   const db = getD1();
   const now = new Date().toISOString();
-  const runtime = getRuntimeEnv() ?? {};
   const defaultName =
     preferredName?.trim() ||
-    previewAccountForEmail(runtime, email)?.name ||
     displayNameFromEmail(email);
   await db
     .prepare(
