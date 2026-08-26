@@ -15,11 +15,11 @@ function passwordRecord(email, name, role = "member") {
   return {
     email,
     display_name: name,
-    password_hash: pbkdf2Sync(password, salt, 210_000, 32, "sha256").toString(
+    password_hash: pbkdf2Sync(password, salt, 100_000, 32, "sha256").toString(
       "base64url",
     ),
     password_salt: salt.toString("base64url"),
-    password_iterations: 210_000,
+    password_iterations: 100_000,
     role,
     status: "active",
     force_password_reset: 1,
@@ -305,7 +305,7 @@ test("accepts seeded accounts and rejects shared or invalid credentials", async 
   assert.equal((await rejected.json()).ok, false);
 
   const sharedAccess = await worker.fetch(
-    request("fresh.member@example.com", "vanta"),
+    request("fresh.member@example.com", "former-shared-password"),
     runtimeEnv(),
     executionContext(),
   );
@@ -442,7 +442,7 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
   assert.match(authMigration, /CREATE TABLE `member_accounts`/);
   assert.match(authMigration, /CREATE TABLE `invite_codes`/);
   assert.match(authMigration, /password_hash/);
-  assert.doesNotMatch(authMigration, /vanta/i);
+  assert.doesNotMatch(authMigration, /former-shared-password/i);
   assert.match(accountStore, /verifyPassword/);
   assert.match(accountStore, /status = 'active'/);
   assert.equal(JSON.parse(hosting).d1, "DB");

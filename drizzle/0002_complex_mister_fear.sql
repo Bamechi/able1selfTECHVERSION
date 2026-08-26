@@ -37,6 +37,6 @@ INSERT INTO `member_accounts`
    `password_iterations`, `role`, `status`, `force_password_reset`,
    `created_at`, `updated_at`)
 VALUES
-('amechi@addcolormedia.com', 'Amechi', 'kvKKeMZ46lAE8ChSqO2-QwtqdbSxt7ogqtEnANJi3tk', '2LaRi_qN-mK8n7PybjIGTg', 210000, 'admin', 'active', 0, '2026-08-26T22:30:00.000Z', '2026-08-26T22:30:00.000Z'),
-('shawndaniels2015@gmail.com', 'Shawn Daniels', 'BEI-Yph1hcj6H4uQUMAJ1_cuLYP_qzZRaOFuNBl1urg', 'uXBjW3DvyAtmJQb-cx1qfw', 210000, 'member', 'active', 0, '2026-08-26T22:30:00.000Z', '2026-08-26T22:30:00.000Z'),
-('19keys@19keys.com', '19Keys', 'ss9ebKxHc4SBWt8HXQBODiBq3r75lTD-A84RoUzvQ_g', '25jbOYSgNS6EHJZP235d2w', 210000, 'member', 'active', 0, '2026-08-26T22:30:00.000Z', '2026-08-26T22:30:00.000Z');
+('amechi@addcolormedia.com', 'Amechi', 'TK7kH55NGJ2nTmKn188Cn_3E_IAZA0Xub14peGfoqX4', '2LaRi_qN-mK8n7PybjIGTg', 100000, 'admin', 'active', 0, '2026-08-26T22:30:00.000Z', '2026-08-26T22:30:00.000Z'),
+('shawndaniels2015@gmail.com', 'Shawn Daniels', 'f6Quzc3BZ0BRyuT47kLEuJzJn4HYK6JPDwoCeM3TtGA', 'uXBjW3DvyAtmJQb-cx1qfw', 100000, 'member', 'active', 0, '2026-08-26T22:30:00.000Z', '2026-08-26T22:30:00.000Z'),
+('19keys@19keys.com', '19Keys', 'dECBprvYuBaldz0RiYUtxkLrr0A4bG4mGig4wd2YRQM', '25jbOYSgNS6EHJZP235d2w', 100000, 'member', 'active', 0, '2026-08-26T22:30:00.000Z', '2026-08-26T22:30:00.000Z');

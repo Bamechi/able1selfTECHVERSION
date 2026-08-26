@@ -1,4 +1,5 @@
-const PASSWORD_ITERATIONS = 210_000;
+// Cloudflare Workers rejects PBKDF2 work factors above 100,000.
+const PASSWORD_ITERATIONS = 100_000;
 
 function encode(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes))

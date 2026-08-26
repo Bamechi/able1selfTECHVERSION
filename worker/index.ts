@@ -5,9 +5,6 @@ import handler from "vinext/server/app-router-entry";
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
-  DEMO_LOGIN_EMAIL?: string;
-  DEMO_LOGIN_PASSWORD?: string;
-  PREVIEW_ACCOUNTS_JSON?: string;
   AUTH_SESSION_SECRET?: string;
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
