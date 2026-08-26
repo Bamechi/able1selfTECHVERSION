@@ -274,24 +274,14 @@ function AnswerField({
   if (question.control === "choice" || question.control === "mbti") {
     const selected = typeof value === "string" ? value : "";
     return (
-      <div className="assessment-options">
-        {question.options?.map((option) => (
-          <button
-            className={selected === option ? "selected" : ""}
-            key={option}
-            type="button"
-            onClick={() => onChange(option)}
-          >
-            <span>{selected === option ? "●" : "○"}</span>
-            {option}
-          </button>
-        ))}
+      <div className={question.control === "mbti" ? "assessment-mbti" : ""}>
         {question.control === "mbti" && (
           <div className="mbti-note">
-            <strong>Your Able code is its own system.</strong>
+            <strong>Don&apos;t know your personality type yet?</strong>
             <p>
-              Your 16Personalities type gives your coach context. It does not
-              score your Able identity code.
+              Take the free 16Personalities test, then return here and select
+              the four-letter type it gives you. This answer adds context to
+              your profile and does not score your Able identity code.
             </p>
             {question.link && (
               <a href={question.link.url} rel="noreferrer" target="_blank">
@@ -300,6 +290,19 @@ function AnswerField({
             )}
           </div>
         )}
+        <div className="assessment-options">
+          {question.options?.map((option) => (
+            <button
+              className={selected === option ? "selected" : ""}
+              key={option}
+              type="button"
+              onClick={() => onChange(option)}
+            >
+              <span>{selected === option ? "●" : "○"}</span>
+              {option}
+            </button>
+          ))}
+        </div>
       </div>
     );
   }

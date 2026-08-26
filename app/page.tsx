@@ -666,8 +666,11 @@ export default function Home() {
 
       <section className="founder-section" id="founder">
         <div className="founder-signal reveal">
-          <div className="founder-symbol-glass">
-            <img src="/able1self-logo.png" alt="" aria-hidden="true" />
+          <div className="founder-portrait">
+            <img
+              src="/images/shawn-profile.jpg"
+              alt="Shawn Daniels writing in a notebook at his design table"
+            />
           </div>
           <span>DESIGNED FROM LIVED EXPERIENCE</span>
           <strong>Shawn Daniels</strong>

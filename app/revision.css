@@ -1,0 +1,297 @@
+/* Revision 2: legibility, founder portrait, and reachable assessment content. */
+.section-label,
+.founder-signal > span,
+.module-player-brand,
+.module-player-meta > span,
+.assessment-number {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.profile-copy > p,
+.program-heading > p,
+.community-copy > p,
+.founder-text p,
+.faq-list details > p,
+.final-content > p {
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.founder-signal > p {
+  font-size: 14px;
+}
+
+.faq-list summary {
+  font-size: 17px;
+}
+
+.brand-name,
+.site-header nav a,
+.nav-login,
+.nav-cta,
+.status-pill,
+.built-for > span,
+.card-label,
+.product-chip,
+.data-label,
+.system-status p,
+.system-status b,
+.stage-tabs small,
+.stage-modules span,
+.stage-output span,
+.profile-points span,
+.dash-progress > span,
+.stage-track span,
+.stage-track small,
+.module-head small,
+.module-card li span,
+.module-output span,
+.community-features li span,
+.online-count,
+.member-meta span,
+.member-meta time,
+.post-meta,
+.price-index,
+.popular,
+.faq-list summary span,
+.footer-links > div > span,
+.footer-bottom,
+.footer-bottom span,
+.footer-bottom a {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.button,
+.audience-tabs button,
+.dash-footer button,
+.match-card button {
+  font-size: 14px;
+}
+
+.built-for p,
+.audience-panel li,
+.stage-modules strong,
+.stage-output strong,
+.profile-points p,
+.module-card li,
+.community-features li,
+.community-post p,
+.price-card p,
+.price-card li,
+.footer-brand p,
+.footer-links a {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.stage-status-main span,
+.system-card small,
+.system-card > strong,
+.hero-metrics span,
+.dash-footer span,
+.member-meta strong,
+.match-card strong,
+.match-card small,
+.founding-note p,
+.payment-note {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.built-for,
+.progress-ring span,
+.system-card > small,
+.audience-panel li span,
+.stage-output,
+.dash-avatar,
+.dash-progress > span,
+.member-avatar,
+.match-card strong,
+.match-card small,
+.price-card li span {
+  font-size: 12px;
+}
+
+.profile-status > div > strong,
+.profile-status > div > small,
+.dash-progress > div > span,
+.community-post.compact > p,
+.match-card p strong,
+.match-card p small {
+  font-size: 12px !important;
+  line-height: 1.45;
+}
+
+.founder-portrait {
+  position: relative;
+  z-index: 2;
+  width: min(440px, 76%);
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: #111112;
+  box-shadow: 0 42px 110px rgba(0, 0, 0, 0.5);
+}
+
+.founder-portrait::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 58%, rgba(0, 0, 0, 0.36));
+  content: "";
+  pointer-events: none;
+}
+
+.founder-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 43%;
+  filter: grayscale(1) contrast(1.08) brightness(0.88);
+  transform: scale(1.01);
+}
+
+.module-player {
+  min-height: 0;
+}
+
+.module-player > main {
+  min-height: 0;
+  align-self: stretch;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  padding: 42px 18px 48px 0;
+  scrollbar-color: rgba(255, 255, 255, 0.56) rgba(255, 255, 255, 0.08);
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  overscroll-behavior: contain;
+}
+
+.module-player > main::-webkit-scrollbar {
+  width: 10px;
+}
+
+.module-player > main::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.module-player > main::-webkit-scrollbar-thumb {
+  border: 2px solid #101011;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.module-player-meta > strong {
+  font-size: 18px;
+}
+
+.module-player main > p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.assessment-mbti {
+  margin-top: 28px;
+}
+
+.assessment-mbti .assessment-options {
+  margin-top: 20px;
+}
+
+.mbti-note {
+  margin-top: 0;
+  padding: 20px;
+}
+
+.mbti-note strong {
+  font-size: 17px;
+}
+
+.mbti-note p,
+.mbti-note a {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.assessment-options button {
+  min-height: 60px;
+  font-size: 16px;
+}
+
+.assessment-options button span {
+  font-size: 17px;
+}
+
+.assessment-scale button {
+  min-width: 0;
+  font-size: 15px;
+}
+
+.assessment-scale > p,
+.selection-count {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.assessment-textarea,
+.assessment-input,
+.assessment-birth input {
+  font-size: 16px;
+}
+
+.assessment-rank li > span,
+.assessment-rank > div button,
+.assessment-birth label > span,
+.assessment-derived > span,
+.assessment-derived p {
+  font-size: 13px;
+}
+
+.assessment-rank li > strong,
+.assessment-derived h3 {
+  font-size: 16px;
+}
+
+.module-player > footer > span {
+  font-size: 11px;
+}
+
+.module-player > footer button {
+  min-height: 48px;
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .founder-portrait {
+    width: min(520px, 82vw);
+  }
+}
+
+@media (max-width: 760px) {
+  .founder-signal {
+    min-height: auto;
+    padding: 72px 20px 58px;
+  }
+
+  .founder-portrait {
+    width: min(420px, 100%);
+  }
+
+  .module-player > main {
+    width: calc(100% - 32px);
+    margin: 72px auto 0;
+    padding: 18px 4px 38px 0;
+  }
+
+  .module-player main h2 {
+    font-size: 36px;
+  }
+
+  .module-player main > p,
+  .assessment-options button {
+    font-size: 16px;
+  }
+}

@@ -97,10 +97,11 @@ test("server-renders the finished Able1Self experience and metadata", async () =
 });
 
 test("ships the app-like system, real founder image, and accessible fallbacks", async () => {
-  const [page, memberExperience, css, layout, packageJson] = await Promise.all([
+  const [page, memberExperience, css, revisionCss, layout, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/member-experience.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/revision.css", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
@@ -119,10 +120,18 @@ test("ships the app-like system, real founder image, and accessible fallbacks", 
   assert.match(page, /aria-label="Toggle navigation"/);
   assert.match(page, /shawn-daniels\.webp/);
   assert.equal(page.match(/shawn-daniels\.webp/g)?.length, 1);
+  assert.match(page, /shawn-profile\.jpg/);
   assert.doesNotMatch(page, /<canvas|FRAME_COUNT|requestAnimationFrame|\/frames\//);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /@media \(max-width: 760px\)/);
   assert.match(css, /font-family:\s*"Manrope"/);
+  assert.match(revisionCss, /\.founder-portrait img[\s\S]*grayscale\(1\)/);
+  assert.match(
+    revisionCss,
+    /\.module-player > main[\s\S]*overflow-y:\s*scroll/,
+  );
+  assert.match(revisionCss, /scrollbar-gutter:\s*stable/);
+  assert.match(revisionCss, /\.assessment-options button[\s\S]*font-size:\s*16px/);
   assert.match(layout, /x-forwarded-host/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 
@@ -130,6 +139,7 @@ test("ships the app-like system, real founder image, and accessible fallbacks", 
     access(new URL("../public/og.png", import.meta.url)),
     access(new URL("../public/able1self-logo.png", import.meta.url)),
     access(new URL("../public/images/shawn-daniels.webp", import.meta.url)),
+    access(new URL("../public/images/shawn-profile.jpg", import.meta.url)),
     access(new URL("../public/fonts/manrope.woff2", import.meta.url)),
   ]);
 });
