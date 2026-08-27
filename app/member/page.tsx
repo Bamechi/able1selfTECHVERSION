@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -919,6 +920,7 @@ function StagePrelude({
 export default function MemberPage() {
   const [data, setData] = useState<MemberData | null>(null);
   const [view, setView] = useState<PortalView>("overview");
+  const portalMainRef = useRef<HTMLElement>(null);
   const [activeModule, setActiveModule] = useState<ProgramModule | null>(null);
   const [stagePrelude, setStagePrelude] = useState<ProgramModule | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -934,6 +936,10 @@ export default function MemberPage() {
   useEffect(() => {
     void loadMember();
   }, []);
+
+  useEffect(() => {
+    portalMainRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [view]);
 
   async function loadMember() {
     try {
@@ -1092,7 +1098,7 @@ export default function MemberPage() {
         </div>
       </aside>
 
-      <section className="portal-main">
+      <section className="portal-main" ref={portalMainRef}>
         <header className="portal-topbar">
           <button
             className="portal-menu"
@@ -1207,9 +1213,9 @@ export default function MemberPage() {
             <Plan data={data} saving={saving} mutate={mutate} />
           )}
           {view === "guide" && <Guide data={data} />}
-          {view === "client" && <ClientPortal />}
+          {view === "client" && <ClientPortal key="member-client-portal" />}
           {view === "admin" && data.role === "admin" && (
-            <ClientPortal adminMode />
+            <ClientPortal key="admin-client-portal" adminMode />
           )}
           {view === "community" && (
             <Community data={data} saving={saving} mutate={mutate} />
