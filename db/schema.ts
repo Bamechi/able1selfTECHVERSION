@@ -105,7 +105,11 @@ export const actionPlanItems = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     memberId: integer("member_id").notNull(),
     title: text("title").notNull(),
+    why: text("why").notNull().default(""),
+    successMetric: text("success_metric").notNull().default(""),
+    startDate: text("start_date").notNull().default(""),
     dueDate: text("due_date").notNull().default(""),
+    checkinCadence: text("checkin_cadence").notNull().default("weekly"),
     status: text("status").notNull().default("open"),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: text("created_at").notNull(),
@@ -113,6 +117,27 @@ export const actionPlanItems = sqliteTable(
   },
   (table) => [
     index("idx_action_plan_items_member").on(table.memberId, table.sortOrder),
+  ],
+);
+
+export const planCheckins = sqliteTable(
+  "plan_checkins",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    planItemId: integer("plan_item_id").notNull(),
+    checkpointDate: text("checkpoint_date").notNull(),
+    status: text("status").notNull(),
+    explanation: text("explanation").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("idx_plan_checkins_member_item").on(
+      table.memberId,
+      table.planItemId,
+      table.checkpointDate,
+    ),
   ],
 );
 

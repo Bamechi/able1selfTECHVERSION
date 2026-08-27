@@ -11,9 +11,10 @@ function errorResponse(error: unknown) {
 export async function GET(request: Request) {
   try {
     const session = await requireSession(request);
+    const data = await getMemberData(session.email, session.name);
     return Response.json({
       ok: true,
-      data: await getMemberData(session.email, session.name),
+      data: { ...data, role: session.role },
     });
   } catch (error) {
     return errorResponse(error);
@@ -24,9 +25,10 @@ export async function PATCH(request: Request) {
   try {
     const session = await requireSession(request);
     const payload = (await request.json()) as Record<string, unknown>;
+    const data = await updateMemberData(session.email, payload, session.name);
     return Response.json({
       ok: true,
-      data: await updateMemberData(session.email, payload, session.name),
+      data: { ...data, role: session.role },
     });
   } catch (error) {
     return errorResponse(error);

@@ -460,3 +460,399 @@
   .client-portal .view-heading { align-items:stretch; flex-direction:column; }
   .assessment-scale:has(button span) > div { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* Revision round 2: concierge workspace, accountable execution, and a firm type floor. */
+
+body { font-size: 17px; }
+main:not(.member-portal):not(.module-player) p { font-size: max(16px, 1em); }
+button,
+input,
+textarea,
+select { font-size: max(15px, 1em); }
+small { font-size: max(13px, .78em); }
+
+.nav-login,
+.auth-brand,
+.auth-kicker,
+.auth-form label > span,
+.forgot-link,
+.auth-return,
+.auth-footer,
+.auth-message { font-size: 13px !important; }
+.auth-copy p,
+.auth-form input { font-size: 16px !important; }
+.auth-submit { font-size: 15px !important; }
+
+.live-member-portal .portal-sidebar nav button { font-size: 15px !important; }
+.live-member-portal .portal-brand,
+.live-member-portal .portal-user strong { font-size: 14px !important; }
+.live-member-portal .portal-user small { font-size: 12px !important; }
+.live-member-portal .portal-topbar { font-size: 14px !important; }
+.live-member-portal .portal-eyebrow,
+.live-member-portal .portal-stat-grid span,
+.live-member-portal .card-topline,
+.live-member-portal .next-move-card > span,
+.live-member-portal .portal-stage-head small,
+.live-member-portal .identity-profile-grid article > span,
+.live-member-portal .room-sidebar > span,
+.live-member-portal .message-shell > aside > span,
+.live-member-portal .settings-stack section > header > span { font-size: 13px !important; }
+.live-member-portal .portal-welcome > div:first-child > p,
+.live-member-portal .portal-page-heading > p,
+.live-member-portal .portal-page-heading > div > p,
+.live-member-portal .continue-content p,
+.live-member-portal .next-move-card p,
+.live-member-portal .identity-hero-card p,
+.live-member-portal .portal-stage-head p,
+.live-member-portal .settings-stack section > header > p,
+.live-member-portal .setting-toggle { font-size: 16px !important; line-height: 1.55; }
+.live-member-portal .portal-stat-grid small,
+.live-member-portal .identity-profile-grid article > small,
+.live-member-portal .room-preview-card small,
+.live-member-portal .continue-content > div:last-child > span,
+.live-member-portal .portal-stage-list li i,
+.live-member-portal .portal-stage-list li small,
+.live-member-portal .room-post footer,
+.live-member-portal .room-post header span,
+.live-member-portal .partner-card p span,
+.live-member-portal .message-shell > aside small,
+.live-member-portal .message-shell > section > header small,
+.live-member-portal .message-thread small { font-size: 13px !important; }
+.live-member-portal .portal-stage-list li strong,
+.live-member-portal .room-post header strong,
+.live-member-portal .partner-card p strong,
+.live-member-portal .message-shell > aside strong,
+.live-member-portal .message-shell > section > header strong,
+.live-member-portal .response-vault article strong { font-size: 15px !important; }
+.live-member-portal .settings-fields label > span,
+.live-member-portal .settings-bio > span,
+.live-member-portal .plan-compose label > span { font-size: 13px !important; }
+.live-member-portal .settings-fields input,
+.live-member-portal .settings-bio textarea,
+.live-member-portal .plan-compose input,
+.live-member-portal .plan-compose select,
+.live-member-portal .message-shell input,
+.live-member-portal .guide-console textarea,
+.live-member-portal .community-compose textarea { font-size: 16px !important; }
+.live-member-portal .continue-content button,
+.live-member-portal .next-move-card button,
+.live-member-portal .settings-stack section > button,
+.live-member-portal .live-settings-form > button,
+.live-member-portal .portal-stage-list li button,
+.live-member-portal .community-compose button { font-size: 14px !important; }
+.portal-progress-reminder > span,
+.portal-progress-reminder em { font-size: 13px !important; }
+.portal-progress-reminder strong { font-size: 18px !important; }
+.portal-progress-reminder p { font-size: 15px !important; }
+.portal-progress-reminder b { font-size: 14px !important; }
+.live-signal-grid span,
+.response-vault header span { font-size: 13px !important; }
+.live-signal-grid p,
+.live-profile-grid article > p,
+.response-vault article p,
+.empty-state { font-size: 15px !important; }
+
+.module-player-brand,
+.module-player-meta > span,
+.assessment-number,
+.assessment-rank li > span,
+.assessment-rank > div button,
+.assessment-birth label > span,
+.mbti-note p,
+.mbti-note a,
+.assessment-derived > span,
+.assessment-derived p,
+.selection-count,
+.assessment-scale > p { font-size: 13px !important; }
+.module-player-meta > strong { font-size: 17px !important; }
+.module-player main > p { font-size: 17px !important; }
+.assessment-options button,
+.assessment-textarea,
+.assessment-input,
+.assessment-scale button,
+.assessment-birth input { font-size: 16px !important; }
+.module-player > footer > span { font-size: 13px !important; }
+.module-player > footer button { min-height: 50px; font-size: 15px !important; }
+
+.plan-health {
+  display: grid;
+  min-height: 190px;
+  padding: 30px;
+  grid-template-columns: 1fr minmax(220px, 34%) auto;
+  gap: 30px;
+  align-items: center;
+  border: 1px solid #c8c8c4;
+  border-radius: 8px;
+  background: #f5f5f2;
+}
+.plan-health.on-track { border-color: #287746; background: #edf7f0; }
+.plan-health.off-track { border-color: #a83d3d; background: #fbefef; }
+.plan-health > div:first-child { display: grid; gap: 8px; }
+.plan-health > div:first-child > span,
+.plan-health dt { color: #666; font: 13px/1.4 var(--mono); text-transform: uppercase; }
+.plan-health > div:first-child > strong { font-size: 30px; font-weight: 560; }
+.plan-health > div:first-child > p { color: #555; font-size: 15px; }
+.plan-health-meter { height: 14px; overflow: hidden; border-radius: 99px; background: #c94e4e; }
+.plan-health-meter i { display: block; width: var(--track-score); height: 100%; background: #2d9657; transition: width 240ms ease; }
+.plan-health dl { display: flex; gap: 22px; }
+.plan-health dl div { display: grid; gap: 5px; }
+.plan-health dd { margin: 0; font: 24px/1 var(--mono); }
+.plan-compose {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  padding: 28px !important;
+  border-radius: 8px !important;
+}
+.plan-compose .plan-field-wide { grid-column: 1 / -1; }
+.plan-compose label { min-width: 0; }
+.plan-compose input,
+.plan-compose select { width: 100%; min-height: 52px; padding: 0 14px; border: 1px solid #c8c8c4; border-radius: 6px; background: #fff; color: #111; font: 16px/1.4 inherit; }
+.plan-compose button { min-height: 52px !important; border-radius: 6px !important; font-size: 15px !important; }
+.plan-commitments { display: grid; gap: 16px; }
+.plan-commitment { overflow: hidden; border: 1px solid #c9c9c5; border-left: 7px solid #999; border-radius: 8px; background: rgba(255,255,255,.62); }
+.plan-commitment.on_track { border-left-color: #2d9657; }
+.plan-commitment.off_track { border-left-color: #c94e4e; }
+.plan-commitment.complete { opacity: .72; }
+.plan-commitment > header { display: flex; min-height: 94px; padding: 20px 24px; align-items: center; justify-content: space-between; border-bottom: 1px solid #d6d6d2; }
+.plan-commitment > header label { display: flex; align-items: center; gap: 14px; cursor: pointer; }
+.plan-commitment > header input { position: absolute; opacity: 0; }
+.plan-commitment > header label > i { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid #aaa; border-radius: 5px; }
+.plan-commitment > header input:checked + i { background: #111; }
+.plan-commitment > header input:checked + i::after { color: #fff; content: "✓"; }
+.plan-commitment > header label > span { display: grid; gap: 5px; }
+.plan-commitment > header small,
+.commitment-brief span,
+.checkin-workspace label > span { color: #666; font: 13px/1.4 var(--mono); text-transform: uppercase; }
+.plan-commitment > header strong { font-size: 22px; font-weight: 560; }
+.commitment-status { display: flex; align-items: center; gap: 12px; }
+.commitment-status em { padding: 8px 11px; border-radius: 99px; background: #ddd; font: 12px/1 var(--mono); font-style: normal; text-transform: uppercase; }
+.on_track .commitment-status em { background: #d9f0e1; color: #166334; }
+.off_track .commitment-status em { background: #f4dada; color: #8d2828; }
+.commitment-status button { border: 0; background: transparent; color: #777; cursor: pointer; font-size: 24px; }
+.commitment-brief { display: grid; padding: 24px; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 22px; }
+.commitment-brief p { display: grid; gap: 7px; }
+.commitment-brief strong { font-size: 15px; line-height: 1.45; }
+.commitment-track { height: 8px; margin: 0 24px 24px; overflow: hidden; border-radius: 99px; background: #c94e4e; }
+.commitment-track span { display: block; height: 100%; background: #2d9657; }
+.checkin-workspace { border-top: 1px solid #d6d6d2; }
+.checkin-workspace summary { display: flex; min-height: 60px; padding: 0 24px; align-items: center; justify-content: space-between; cursor: pointer; font-size: 16px; font-weight: 650; }
+.checkin-workspace summary span { color: #666; font: 13px var(--mono); }
+.checkin-workspace > form { display: grid; padding: 24px; grid-template-columns: 180px 180px 1fr auto; gap: 14px; align-items: end; background: #f0f0ed; }
+.checkin-workspace label { display: grid; gap: 8px; }
+.checkin-workspace input,
+.checkin-workspace select,
+.checkin-workspace textarea { min-height: 50px; padding: 11px 13px; border: 1px solid #bbb; border-radius: 6px; background: #fff; color: #111; font: 15px/1.45 inherit; }
+.checkin-workspace textarea { min-height: 72px; resize: vertical; }
+.checkin-workspace button { min-height: 50px; padding: 0 18px; border: 0; border-radius: 6px; background: #111; color: #fff; cursor: pointer; font-size: 15px; }
+.checkin-history { display: grid; }
+.checkin-history > article { display: grid; min-height: 76px; padding: 15px 24px; grid-template-columns: 12px 120px 100px 1fr; gap: 14px; align-items: center; border-top: 1px solid #ddd; }
+.checkin-history > article i { width: 10px; height: 10px; border-radius: 50%; background: #999; }
+.checkin-history > article.on_track i { background: #2d9657; }
+.checkin-history > article.off_track i { background: #c94e4e; }
+.checkin-history > article span,
+.checkin-history > article strong { font: 13px var(--mono); text-transform: uppercase; }
+.checkin-history > article p,
+.checkin-history > p { padding: 18px 24px; color: #555; font-size: 15px; line-height: 1.5; }
+
+.concierge-portal {
+  min-height: calc(100vh - 150px);
+  padding: clamp(24px, 4vw, 52px);
+  border: 1px solid #2c2a20;
+  border-radius: 8px;
+  background: #0b0b08;
+  color: #f3f0e8;
+}
+.concierge-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; padding-bottom: 28px; border-bottom: 1px solid #332f20; }
+.concierge-heading > div { max-width: 800px; }
+.concierge-heading span,
+.concierge-client-strip span,
+.concierge-dashboard span,
+.concierge-collection header span,
+.concierge-sessions > header span,
+.concierge-orders > header span,
+.profile-record-heading span,
+.admin-command-center span,
+.admin-client-entry > span { color: #bda86d; font: 13px/1.4 var(--mono); text-transform: uppercase; }
+.concierge-heading h1 { margin-top: 10px; font-size: clamp(42px, 5vw, 72px); font-weight: 460; line-height: .98; }
+.concierge-heading p { max-width: 780px; margin-top: 16px; color: #aaa693; font-size: 17px; line-height: 1.6; }
+.member-selector span { color: #bda86d !important; font-size: 13px !important; }
+.member-selector select { min-height: 54px; border: 1px solid #4b452d; background: #15150f; color: #f5f1e5; font-size: 16px; }
+.concierge-client-strip { display: grid; min-height: 126px; margin-top: 24px; padding: 20px; grid-template-columns: auto 1fr minmax(180px,.4fr) minmax(220px,.55fr); gap: 20px; align-items: center; border: 1px solid #3a3522; border-radius: 8px; background: #12120d; }
+.concierge-avatar { display: grid; width: 78px; height: 78px; overflow: hidden; place-items: center; border: 1px solid #8f7d45; border-radius: 50%; background: #242116; color: #e0cb8e; font: 18px var(--mono); }
+.concierge-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.concierge-client-strip > div:nth-child(2) { display: grid; gap: 4px; }
+.concierge-client-strip > div:nth-child(2) strong { font-size: 22px; }
+.concierge-client-strip > div:nth-child(2) p { color: #928d7a; font-size: 15px; }
+.concierge-measurement-status,
+.concierge-next-session { display: grid; gap: 7px; }
+.concierge-measurement-status strong,
+.concierge-next-session strong { font-size: 17px; }
+.concierge-measurement-status i { height: 6px; overflow: hidden; border-radius: 99px; background: #302d21; }
+.concierge-measurement-status b { display: block; height: 100%; background: #c6ad63; }
+.concierge-tabs { margin: 24px 0 !important; border-color: #3b3624 !important; }
+.concierge-tabs button { min-height: 58px !important; border-color: #3b3624 !important; color: #aaa58f !important; font-size: 16px !important; }
+.concierge-tabs button.active { background: #c5ad68 !important; color: #0b0b08 !important; }
+.portal-notice { border-left-color: #c5ad68; background: #242116; color: #f3f0e8; font-size: 15px; }
+.concierge-dashboard { display: grid; gap: 18px; }
+.concierge-session-banner { display: flex; min-height: 110px; padding: 24px; align-items: center; justify-content: space-between; gap: 20px; border: 1px solid #3c3724; border-radius: 8px; background: #17170f; }
+.concierge-session-banner > div { display: grid; gap: 5px; }
+.concierge-session-banner strong { font-size: 20px; }
+.concierge-session-banner p { color: #999480; font-size: 15px; }
+.concierge-session-banner button,
+.concierge-dashboard button,
+.admin-client-entry button { min-height: 46px; padding: 0 18px; border: 1px solid #70633e; border-radius: 6px; background: transparent; color: #e5d39c; cursor: pointer; font-size: 15px; }
+.concierge-service-track { padding: 26px; border: 1px solid #393522; border-radius: 8px; }
+.concierge-service-track > header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.concierge-service-track > header strong { font-size: 18px; }
+.concierge-service-track > div { display: grid; margin-top: 28px; grid-template-columns: repeat(4,1fr); }
+.concierge-service-track article { position: relative; display: grid; gap: 5px; border-top: 2px solid #3c3828; padding-top: 17px; }
+.concierge-service-track article i { position: absolute; top: -7px; width: 12px; height: 12px; border-radius: 50%; background: #514b34; }
+.concierge-service-track article.active { border-color: #c5ad68; }
+.concierge-service-track article.active i { background: #c5ad68; box-shadow: 0 0 0 5px rgba(197,173,104,.12); }
+.concierge-service-track article strong { color: #c5ad68; font: 17px var(--mono); }
+.concierge-service-track article span { color: #8f8a77; }
+.concierge-dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.concierge-profile-card,
+.concierge-order-summary { display: grid; min-height: 220px; padding: 26px; align-content: start; gap: 12px; border: 1px solid #3c3724 !important; border-radius: 8px !important; background: #13130e !important; color: #f3f0e8 !important; text-align: left; }
+.concierge-profile-card strong,
+.concierge-order-summary strong { font-size: 26px; font-weight: 520; }
+.concierge-profile-card p,
+.concierge-order-summary p { color: #9d9884; font-size: 16px; line-height: 1.55; }
+.concierge-profile-card b { margin-top: auto; color: #d4bd7b; font-size: 15px; }
+.concierge-order-summary button { justify-self: start; margin-top: auto; }
+.concierge-look-preview { padding: 24px; border: 1px solid #393522; border-radius: 8px; }
+.concierge-look-preview > header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.concierge-look-preview header > div { display: grid; gap: 5px; }
+.concierge-look-preview header strong { font-size: 20px; }
+.concierge-look-preview > div { display: grid; min-height: 220px; margin-top: 20px; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.concierge-look-preview img { width: 100%; height: 300px; object-fit: cover; border: 1px solid #302c1d; }
+.concierge-look-preview > div > p { display: grid; grid-column: 1/-1; place-items: center; border: 1px dashed #49442e; color: #8f8a78; font-size: 16px; }
+.profile-record-heading,
+.concierge-collection > header,
+.concierge-sessions > header,
+.concierge-orders > header { padding: 4px 0 22px; }
+.profile-record-heading h2,
+.concierge-collection h2,
+.concierge-sessions h2,
+.concierge-orders h2 { margin-top: 7px; font-size: 36px; font-weight: 500; }
+.profile-record-heading p,
+.concierge-collection header p,
+.concierge-sessions > header p,
+.concierge-orders > header p { max-width: 760px; margin-top: 10px; color: #9f9a87; font-size: 16px; line-height: 1.55; }
+.concierge-portal .client-form label span,
+.concierge-portal .measurement-meta label span,
+.concierge-portal .unit-toggle > span,
+.concierge-portal .measurement-grid label > span,
+.concierge-portal .measurement-notes span { color: #b9a66d; font-size: 13px; }
+.concierge-portal .client-form input,
+.concierge-portal .client-form textarea,
+.concierge-portal .measurement-meta input,
+.concierge-portal .measurement-grid input,
+.concierge-portal .measurement-notes textarea,
+.concierge-portal .asset-upload input,
+.concierge-portal .admin-inline-form input,
+.concierge-portal .admin-inline-form select { border-color: #49442e; background: #171711; color: #f3f0e8; font-size: 16px; }
+.concierge-portal .client-form > button,
+.concierge-portal .measurements-panel > button,
+.concierge-portal .asset-upload button,
+.concierge-portal .client-command,
+.concierge-portal .admin-inline-form button { border-color: #c5ad68; background: #c5ad68; color: #0b0b08; font-size: 15px; }
+.measurement-entry-card { display: flex; min-height: 160px; padding: 24px; align-items: center; justify-content: space-between; gap: 24px; border: 1px solid #4b452e; border-left: 6px solid #a84747; border-radius: 8px; background: #14140f; color: #f3f0e8; cursor: pointer; text-align: left; }
+.measurement-entry-card.complete { border-left-color: #3c965c; }
+.measurement-entry-card > div { display: grid; gap: 7px; }
+.measurement-entry-card span { color: #bca76c; font: 13px var(--mono); }
+.measurement-entry-card strong { font-size: 25px; }
+.measurement-entry-card p { color: #9e9987; font-size: 16px; line-height: 1.5; }
+.measurement-entry-card b { color: #d7c182; font-size: 15px; white-space: nowrap; }
+.profile-measurements-editor { padding: 24px; border: 1px solid #4b452e; border-radius: 8px; background: #10100c; }
+.concierge-portal .unit-toggle button { border-color: #4b452e; background: #171711; color: #f3f0e8; }
+.concierge-portal .unit-toggle button.active { background: #c5ad68; color: #0b0b08; }
+.concierge-portal .measurement-grid { border-color: #4b452e; }
+.concierge-portal .measurement-grid label { border-color: #3b3726; }
+.concierge-upload { margin-top: 18px; padding: 18px; border: 1px solid #393522; border-radius: 8px; }
+.concierge-asset-grid { display: grid; margin-top: 20px; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
+.concierge-asset-grid a { display: grid; min-height: 420px; overflow: hidden; align-content: start; border: 1px solid #3a3523; border-radius: 8px; background: #11110d; color: #f1eee5; text-decoration: none; }
+.concierge-asset-grid img,
+.asset-document { width: 100%; aspect-ratio: 4/5; object-fit: cover; background: #211f16; }
+.asset-document { display: grid; place-items: center; color: #c5ad68; font: 28px var(--mono); }
+.concierge-asset-grid span { padding: 16px 16px 5px; color: #f1eee5; font-size: 17px; }
+.concierge-asset-grid small { padding: 0 16px 16px; color: #8f8a77; font-size: 13px; }
+.concierge-empty-visual { display: grid; min-height: 300px; grid-column: 1/-1; place-content: center; justify-items: center; gap: 9px; border: 1px dashed #4b452e; }
+.concierge-empty-visual strong { font-size: 20px; }
+.concierge-empty-visual p { color: #918c79; font-size: 15px; }
+.session-ledger { display: grid; margin-top: 20px; }
+.session-ledger > article { display: grid; min-height: 160px; padding: 22px 0; grid-template-columns: 70px 1fr; border-top: 1px solid #393522; }
+.session-ledger > article > div { display: grid; justify-items: center; align-content: start; gap: 8px; }
+.session-ledger > article > div span { color: #c5ad68; font: 16px var(--mono); }
+.session-ledger > article > div i { width: 1px; height: 90px; background: #514a30; }
+.session-ledger section { display: grid; align-content: start; gap: 7px; }
+.session-ledger small { color: #bda96e; font-size: 14px; }
+.session-ledger strong { font-size: 24px; }
+.session-ledger p { color: #9c9784; font-size: 16px; }
+.session-ledger em { width: fit-content; padding: 6px 9px; border: 1px solid #554e33; border-radius: 99px; color: #c7b372; font: 12px var(--mono); font-style: normal; text-transform: uppercase; }
+.order-card-grid { display: grid; margin-top: 22px; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
+.order-card-grid article { display: grid; min-height: 260px; padding: 22px; align-content: start; gap: 10px; border: 1px solid #3d3825; border-radius: 8px; background: #12120d; }
+.order-card-grid article > span { color: #bda86d; }
+.order-card-grid article > strong { font-size: 23px; }
+.order-card-grid article > em { width: fit-content; padding: 7px 10px; border-radius: 99px; background: #332f20; color: #d6c182; font: 12px var(--mono); font-style: normal; text-transform: uppercase; }
+.order-card-grid article > em.delivered { background: #183524; color: #8bd1a5; }
+.order-card-grid article > p { margin-top: 15px; color: #9c9784; font-size: 15px; line-height: 1.55; }
+.order-card-grid article > a { margin-top: auto; color: #dbc680; font-size: 15px; }
+.admin-inline-form { background: #11110d; border-color: #3e3926; }
+.admin-command-center { display: grid; margin-top: 24px; gap: 18px; }
+.admin-stat-row { display: grid; grid-template-columns: repeat(4,1fr); border: 1px solid #3d3825; border-radius: 8px; }
+.admin-stat-row article { display: grid; min-height: 120px; padding: 20px; gap: 12px; border-right: 1px solid #3d3825; }
+.admin-stat-row article:last-child { border-right: 0; }
+.admin-stat-row strong { font: 34px var(--mono); }
+.admin-activity { border: 1px solid #3d3825; border-radius: 8px; }
+.admin-activity > header,
+.admin-activity > article { display: grid; min-height: 68px; padding: 14px 20px; grid-template-columns: 1fr 1fr 2fr; gap: 14px; align-items: center; border-bottom: 1px solid #302d20; }
+.admin-activity > header strong { font-size: 17px; }
+.admin-activity > article strong { font-size: 15px; }
+.admin-activity > article p { color: #918c79; font-size: 14px; }
+.admin-activity > p { padding: 22px; color: #918c79; font-size: 15px; }
+.admin-client-entry { display: grid; min-height: 280px; place-content: center; justify-items: center; gap: 12px; text-align: center; }
+.admin-client-entry h2 { font-size: 42px; }
+.admin-client-entry p { max-width: 700px; color: #9c9784; font-size: 17px; line-height: 1.6; }
+
+@media (max-width: 1100px) {
+  .plan-health { grid-template-columns: 1fr; }
+  .commitment-brief { grid-template-columns: repeat(2,1fr); }
+  .checkin-workspace > form { grid-template-columns: 1fr 1fr; }
+  .checkin-explanation { grid-column: 1/-1; }
+  .concierge-client-strip { grid-template-columns: auto 1fr; }
+  .concierge-measurement-status,
+  .concierge-next-session { grid-column: span 1; }
+  .concierge-asset-grid,
+  .order-card-grid { grid-template-columns: repeat(2,1fr); }
+}
+
+@media (max-width: 760px) {
+  body { font-size: 16px; }
+  .concierge-portal { padding: 20px; }
+  .concierge-heading,
+  .concierge-session-banner,
+  .measurement-entry-card { align-items: stretch; flex-direction: column; }
+  .concierge-client-strip,
+  .concierge-dashboard-grid,
+  .concierge-service-track > div,
+  .concierge-asset-grid,
+  .order-card-grid,
+  .admin-stat-row,
+  .plan-compose,
+  .commitment-brief,
+  .checkin-workspace > form { grid-template-columns: 1fr !important; }
+  .concierge-avatar { width: 68px; height: 68px; }
+  .concierge-service-track article { min-height: 76px; padding-left: 26px; border-top: 0; border-left: 2px solid #3c3828; }
+  .concierge-service-track article i { top: 4px; left: -7px; }
+  .concierge-look-preview > div { grid-template-columns: 1fr; }
+  .concierge-look-preview img { height: auto; aspect-ratio: 4/5; }
+  .admin-stat-row article { border-right: 0; border-bottom: 1px solid #3d3825; }
+  .admin-activity > header,
+  .admin-activity > article { grid-template-columns: 1fr; }
+  .plan-health dl { justify-content: space-between; }
+  .plan-commitment > header { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .checkin-history > article { grid-template-columns: 12px 1fr; }
+  .checkin-history > article p { grid-column: 2; padding: 0; }
+  .measurement-entry-card b { white-space: normal; }
+}

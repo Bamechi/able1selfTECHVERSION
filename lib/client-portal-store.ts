@@ -62,7 +62,7 @@ export async function getClientPortal(email: string, role: string, targetEmail?:
     "SELECT * FROM measurement_sets WHERE member_id = ? ORDER BY updated_at DESC LIMIT 1",
   ).bind(member.id).first<Record<string, unknown>>();
   const setId = Number(measurementSet?.id ?? 0);
-  const [client, measurementRows, assets, appointments, orders, members] = await Promise.all([
+  const [client, measurementRows, assets, appointments, orders, members, auditLog, adminStats] = await Promise.all([
     db.prepare("SELECT * FROM client_profiles WHERE member_id = ?").bind(member.id).first(),
     db.prepare("SELECT measurement_key, value FROM measurements WHERE set_id = ?").bind(setId).all<{measurement_key:string;value:string}>(),
     db.prepare("SELECT id, category, filename, content_type, size, caption, created_at FROM client_assets WHERE member_id = ? ORDER BY created_at DESC").bind(member.id).all(),
@@ -73,6 +73,20 @@ export async function getClientPortal(email: string, role: string, targetEmail?:
                     JOIN member_accounts a ON lower(a.email)=lower(p.email)
                     WHERE a.status='active' ORDER BY p.display_name`).all()
       : Promise.resolve({ results: [] }),
+    role === "admin"
+      ? db.prepare(`SELECT l.id, l.actor_email, l.action, l.detail_json, l.created_at,
+                           p.email AS member_email, p.display_name
+                    FROM admin_audit_log l
+                    JOIN member_profiles p ON p.id=l.member_id
+                    ORDER BY l.created_at DESC LIMIT 20`).all()
+      : Promise.resolve({ results: [] }),
+    role === "admin"
+      ? db.prepare(`SELECT
+          (SELECT COUNT(*) FROM member_accounts WHERE status='active') AS active_members,
+          (SELECT COUNT(*) FROM client_orders) AS orders,
+          (SELECT COUNT(*) FROM appointments) AS appointments,
+          (SELECT COUNT(*) FROM client_assets) AS assets`).first()
+      : Promise.resolve(null),
   ]);
   return {
     role,
@@ -85,6 +99,8 @@ export async function getClientPortal(email: string, role: string, targetEmail?:
     assets: assets.results,
     appointments: appointments.results,
     orders: orders.results,
+    auditLog: auditLog.results,
+    adminStats,
   };
 }
 

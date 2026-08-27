@@ -6,6 +6,7 @@ import {
   type ReactNode,
   type CSSProperties,
   type FormEvent,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -33,11 +34,13 @@ type PortalView =
   | "plan"
   | "guide"
   | "client"
+  | "admin"
   | "community"
   | "messages"
   | "settings";
 
 type MemberData = {
+  role: "member" | "admin";
   profile: {
     email: string;
     displayName: string;
@@ -63,8 +66,20 @@ type MemberData = {
   plan: Array<{
     id: number;
     title: string;
+    why: string;
+    success_metric: string;
+    start_date: string;
     due_date: string;
+    checkin_cadence: string;
     status: string;
+  }>;
+  planCheckins: Array<{
+    id: number;
+    plan_item_id: number;
+    checkpoint_date: string;
+    status: "on_track" | "off_track";
+    explanation: string;
+    created_at: string;
   }>;
   settings: {
     module_reminders: number | boolean;
@@ -147,6 +162,12 @@ const navigation: Array<{
   { id: "messages", label: "Messages", symbol: "↗" },
   { id: "settings", label: "Settings", symbol: "⌘" },
 ];
+
+const adminNavigation: { id: PortalView; label: string; symbol: string } = {
+  id: "admin",
+  label: "Admin console",
+  symbol: "▦",
+};
 
 const stageDetails = [
   {
@@ -1003,6 +1024,14 @@ export default function MemberPage() {
   const unread =
     data?.notifications.filter((notification) => !notification.is_read).length ??
     0;
+  const visibleNavigation = useMemo(() => {
+    if (data?.role !== "admin") return navigation;
+    return [
+      ...navigation.slice(0, -1),
+      adminNavigation,
+      navigation[navigation.length - 1],
+    ];
+  }, [data?.role]);
 
   if (loading) {
     return (
@@ -1035,7 +1064,7 @@ export default function MemberPage() {
           <span>ABLE1SELF</span>
         </Link>
         <nav aria-label="Member navigation">
-          {navigation.map((item) => (
+          {visibleNavigation.map((item) => (
             <button
               className={view === item.id ? "active" : ""}
               key={item.id}
@@ -1179,6 +1208,9 @@ export default function MemberPage() {
           )}
           {view === "guide" && <Guide data={data} />}
           {view === "client" && <ClientPortal />}
+          {view === "admin" && data.role === "admin" && (
+            <ClientPortal adminMode />
+          )}
           {view === "community" && (
             <Community data={data} saving={saving} mutate={mutate} />
           )}
@@ -1706,22 +1738,66 @@ function Plan({
   mutate: (payload: Record<string, unknown>) => Promise<MemberData | undefined>;
 }) {
   const [title, setTitle] = useState("");
+  const [why, setWhy] = useState("");
+  const [successMetric, setSuccessMetric] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [checkinCadence, setCheckinCadence] = useState("weekly");
   async function submit(event: FormEvent) {
     event.preventDefault();
-    await mutate({ action: "add_plan_item", title, dueDate });
+    await mutate({
+      action: "add_plan_item",
+      title,
+      why,
+      successMetric,
+      startDate,
+      dueDate,
+      checkinCadence,
+    });
     setTitle("");
+    setWhy("");
+    setSuccessMetric("");
+    setStartDate("");
     setDueDate("");
   }
+  const onTrack = data.planCheckins.filter(
+    (checkin) => checkin.status === "on_track",
+  ).length;
+  const offTrack = data.planCheckins.length - onTrack;
+  const trackScore = data.planCheckins.length
+    ? Math.round((onTrack / data.planCheckins.length) * 100)
+    : 50;
+  const healthTone = !data.planCheckins.length
+    ? "neutral"
+    : trackScore >= 60
+      ? "on-track"
+      : "off-track";
   return (
     <div className="portal-view-stack">
       <div className="portal-page-heading">
         <span className="portal-eyebrow">EMBARK / EXECUTION SYSTEM</span>
         <h1>Your 90-day plan.</h1>
-        <p>Capture commitments, set dates, and close the loop as you execute.</p>
+        <p>
+          Define the outcome, name why it matters, and tell the truth at every
+          checkpoint. The signal gets greener when you stay on track and redder
+          when the plan needs intervention.
+        </p>
       </div>
+      <section className={`plan-health ${healthTone}`} style={{ "--track-score": `${trackScore}%` } as CSSProperties}>
+        <div>
+          <span>90-DAY EXECUTION SIGNAL</span>
+          <strong>{data.planCheckins.length ? `${trackScore}% on track` : "Awaiting first check-in"}</strong>
+          <p>{data.plan.length} commitments · {data.planCheckins.length} checkpoints logged</p>
+        </div>
+        <div className="plan-health-meter" aria-label={`${trackScore}% on track`}><i /></div>
+        <dl>
+          <div><dt>On track</dt><dd>{onTrack}</dd></div>
+          <div><dt>Off track</dt><dd>{offTrack}</dd></div>
+          <div><dt>Complete</dt><dd>{data.plan.filter((item) => item.status === "complete").length}</dd></div>
+        </dl>
+      </section>
       <form className="plan-compose" onSubmit={submit}>
-        <label>
+        <label className="plan-field-wide">
           <span>THE NEXT MOVE</span>
           <input
             value={title}
@@ -1730,64 +1806,106 @@ function Plan({
             required
           />
         </label>
+        <label className="plan-field-wide">
+          <span>WHY THIS MATTERS</span>
+          <input
+            value={why}
+            onChange={(event) => setWhy(event.target.value)}
+            placeholder="What changes when this is done?"
+            required
+          />
+        </label>
+        <label className="plan-field-wide">
+          <span>PROOF OF SUCCESS</span>
+          <input
+            value={successMetric}
+            onChange={(event) => setSuccessMetric(event.target.value)}
+            placeholder="What measurable result proves completion?"
+            required
+          />
+        </label>
         <label>
-          <span>TARGET DATE</span>
+          <span>START DATE</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(event) => setStartDate(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>90-DAY TARGET</span>
           <input
             type="date"
             value={dueDate}
             onChange={(event) => setDueDate(event.target.value)}
           />
         </label>
+        <label>
+          <span>CHECK-IN RHYTHM</span>
+          <select value={checkinCadence} onChange={(event) => setCheckinCadence(event.target.value)}>
+            <option value="weekly">Every week</option>
+            <option value="biweekly">Every two weeks</option>
+            <option value="monthly">Every month</option>
+          </select>
+        </label>
         <button type="submit" disabled={saving}>
-          {saving ? "Saving…" : "Add commitment →"}
+          {saving ? "Saving…" : "Build commitment →"}
         </button>
       </form>
-      <section className="plan-board">
-        <header>
-          <span>COMMITMENT</span>
-          <span>DATE</span>
-          <span>STATUS</span>
-        </header>
+      <section className="plan-commitments">
         {data.plan.length ? (
-          data.plan.map((item) => (
-            <article
-              className={item.status === "complete" ? "complete" : ""}
-              key={item.id}
-            >
-              <label>
-                <input
-                  type="checkbox"
-                  checked={item.status === "complete"}
-                  onChange={() =>
-                    mutate({
-                      action: "toggle_plan_item",
-                      id: item.id,
-                      status:
-                        item.status === "complete" ? "open" : "complete",
-                    })
-                  }
-                />
-                <i />
-                <strong>{item.title}</strong>
-              </label>
-              <span>{item.due_date || "Open"}</span>
-              <div>
-                <em>{item.status}</em>
+          data.plan.map((item) => {
+            const checkins = data.planCheckins.filter(
+              (checkin) => checkin.plan_item_id === item.id,
+            );
+            const latest = checkins[0];
+            const itemOnTrack = checkins.filter(
+              (checkin) => checkin.status === "on_track",
+            ).length;
+            return (
+            <article className={`plan-commitment ${item.status === "complete" ? "complete" : ""} ${latest?.status ?? "unreported"}`} key={item.id}>
+              <header>
+                <label>
+                  <input type="checkbox" checked={item.status === "complete"} onChange={() => mutate({ action:"toggle_plan_item", id:item.id, status:item.status === "complete" ? "open" : "complete" })} />
+                  <i />
+                  <span><small>COMMITMENT</small><strong>{item.title}</strong></span>
+                </label>
+                <div className="commitment-status">
+                  <em>{latest ? latest.status.replace("_", " ") : "check-in due"}</em>
                 <button
                   type="button"
-                  onClick={() =>
-                    mutate({ action: "delete_plan_item", id: item.id })
-                  }
+                  onClick={() => mutate({ action: "delete_plan_item", id: item.id })}
                   aria-label={`Delete ${item.title}`}
-                >
-                  ×
-                </button>
+                >×</button>
+                </div>
+              </header>
+              <div className="commitment-brief">
+                <p><span>Why it matters</span><strong>{item.why || "Add the reason behind this commitment."}</strong></p>
+                <p><span>Proof of success</span><strong>{item.success_metric || "Define the measurable finish line."}</strong></p>
+                <p><span>Window</span><strong>{item.start_date || "Start now"} → {item.due_date || "Day 90"}</strong></p>
+                <p><span>Rhythm</span><strong>{item.checkin_cadence === "biweekly" ? "Every two weeks" : item.checkin_cadence === "monthly" ? "Every month" : "Every week"}</strong></p>
               </div>
+              <div className="commitment-track">
+                <span style={{ width: `${checkins.length ? Math.round((itemOnTrack / checkins.length) * 100) : 50}%` }} />
+              </div>
+              <details className="checkin-workspace">
+                <summary>Log checkpoint <span>{checkins.length} recorded</span></summary>
+                <form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void mutate({ action:"add_plan_checkin", id:item.id, checkpointDate:form.get("checkpointDate"), status:form.get("status"), explanation:form.get("explanation") }).then(() => event.currentTarget.reset()); }}>
+                  <label><span>Checkpoint date</span><input name="checkpointDate" type="date" defaultValue={new Date().toISOString().slice(0,10)} required /></label>
+                  <label><span>Status</span><select name="status" defaultValue="on_track"><option value="on_track">On track</option><option value="off_track">Off track</option></select></label>
+                  <label className="checkin-explanation"><span>Status and why</span><textarea name="explanation" placeholder="What happened, what is working, and what needs to change next?" required /></label>
+                  <button disabled={saving}>Save checkpoint</button>
+                </form>
+                <div className="checkin-history">
+                  {checkins.length ? checkins.map((checkin) => <article className={checkin.status} key={checkin.id}><i /><span>{checkin.checkpoint_date}</span><strong>{checkin.status.replace("_", " ")}</strong><p>{checkin.explanation}</p></article>) : <p>No checkpoints yet. Log the first honest status update above.</p>}
+                </div>
+              </details>
             </article>
-          ))
+          )})
         ) : (
           <p className="empty-state">
-            Add your first concrete move above. Keep it specific and finishable.
+            Build the first 90-day commitment above. Include the reason, the
+            measurable finish line, and the rhythm you will use to stay honest.
           </p>
         )}
       </section>
@@ -1944,31 +2062,36 @@ function Messages({
 
 type ClientPortalData = {
   role: string;
-  member: { email:string; display_name:string };
+  member: { email:string; display_name:string; role:string };
   members: Array<{email:string;display_name:string;role:string}>;
   client: Record<string, unknown>;
   measurementSet: Record<string, unknown>;
   measurements: Record<string, string>;
   measurementFields: Array<[string, string]>;
-  assets: Array<{id:number;category:string;filename:string;caption:string}>;
+  assets: Array<{id:number;category:string;filename:string;content_type:string;caption:string;created_at:string}>;
   appointments: Array<{id:number;title:string;starts_at:string;status:string;notes:string}>;
   orders: Array<{id:number;order_number:string;title:string;status:string;amount:string;tracking_url:string;notes:string}>;
+  auditLog: Array<{id:number;actor_email:string;action:string;created_at:string;member_email:string;display_name:string}>;
+  adminStats: {active_members:number;orders:number;appointments:number;assets:number} | null;
 };
 
-function ClientPortal() {
+function ClientPortal({ adminMode = false }: { adminMode?: boolean }) {
   const [portal, setPortal] = useState<ClientPortalData | null>(null);
-  const [tab, setTab] = useState("measurements");
+  const [tab, setTab] = useState(adminMode ? "admin" : "dashboard");
   const [target, setTarget] = useState("");
   const [measurements, setMeasurements] = useState<Record<string,string>>({});
   const [unit, setUnit] = useState("in");
+  const [measurementsOpen, setMeasurementsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [today] = useState(() => Date.now());
 
-  async function load(selected?: string) {
+  const load = useCallback(async (selected?: string) => {
     setBusy(true);
     try {
       const suffix = selected ? `?member=${encodeURIComponent(selected)}` : "";
-      const response = await fetch(`/api/client-portal${suffix}`, { cache:"no-store" });
+      const endpoint = adminMode ? "/api/client-portal/admin" : "/api/client-portal";
+      const response = await fetch(`${endpoint}${suffix}`, { cache:"no-store" });
       const result = await response.json() as {data?:ClientPortalData;error?:string};
       if (!response.ok || !result.data) throw new Error(result.error ?? "Unable to load Members Only.");
       setPortal(result.data);
@@ -1977,17 +2100,18 @@ function ClientPortal() {
       setUnit(String(result.data.measurementSet.unit ?? "in"));
     } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to load Members Only."); }
     finally { setBusy(false); }
-  }
+  }, [adminMode]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [load]);
 
   async function patch(payload: Record<string,unknown>) {
     setBusy(true); setNotice("");
     try {
-      const response = await fetch("/api/client-portal", { method:"PATCH", headers:{"content-type":"application/json"}, body:JSON.stringify({ ...payload, targetEmail:target }) });
+      const endpoint = adminMode ? "/api/client-portal/admin" : "/api/client-portal";
+      const response = await fetch(endpoint, { method:"PATCH", headers:{"content-type":"application/json"}, body:JSON.stringify({ ...payload, targetEmail:target }) });
       const result = await response.json() as {data?:ClientPortalData;error?:string};
       if (!response.ok || !result.data) throw new Error(result.error ?? "Unable to save.");
       setPortal(result.data); setMeasurements(result.data.measurements); setNotice("Saved.");
@@ -2007,35 +2131,85 @@ function ClientPortal() {
     finally { setBusy(false); }
   }
 
-  if (!portal) return <section className="portal-view client-portal"><p>{busy ? "Loading Members Only..." : notice}</p></section>;
+  if (!portal) return <section className="portal-view client-portal concierge-portal"><p>{busy ? "Loading private client record..." : notice}</p></section>;
   const displayed = (value:string) => unit === "cm" && value ? (Number(value) * 2.54).toFixed(1) : value;
   const stored = (value:string) => unit === "cm" && value ? (Number(value) / 2.54).toFixed(2).replace(/0+$/, "").replace(/\.$/, "") : value;
-  const tabs = ["profile", "measurements", "calendar", "vision", "closet", "orders"];
+  const tabs = ["dashboard", "profile", "sessions", "looks", "closet", "orders"];
+  const completedMeasurements = Object.values(measurements).filter(Boolean).length;
+  const measurementPercent = Math.round((completedMeasurements / portal.measurementFields.length) * 100);
+  const profileImages = portal.assets.filter((asset) => asset.category === "profile" && asset.content_type.startsWith("image/"));
+  const nextSession = portal.appointments
+    .filter((appointment) => new Date(appointment.starts_at).getTime() >= today)
+    .sort((a,b) => a.starts_at.localeCompare(b.starts_at))[0] ?? portal.appointments[0];
+  const activeOrder = portal.orders.find((order) => order.status !== "delivered") ?? portal.orders[0];
+  const orderStages = ["planning", "in production", "shipped", "delivered"];
+  const orderStage = activeOrder ? Math.max(0, orderStages.indexOf(activeOrder.status)) : 0;
+
+  const assetCollection = (category: "vision" | "closet", title: string, copy: string) => {
+    const assets = portal.assets.filter((asset) => asset.category === category);
+    return <div className="concierge-collection">
+      <header><div><span>{category === "vision" ? "LOOK DIRECTION" : "PRIVATE CLOSET"}</span><h2>{title}</h2><p>{copy}</p></div></header>
+      <form className="asset-upload concierge-upload" onSubmit={(event)=>void upload(event,category)}><input required name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"/><input name="caption" placeholder="Look name, fabric, fit, or styling note"/><button disabled={busy} type="submit">Add to {category === "vision" ? "lookbook" : "closet"}</button></form>
+      <div className="concierge-asset-grid">{assets.length ? assets.map((asset)=><a key={asset.id} href={`/api/client-portal/asset?id=${asset.id}`} target="_blank" rel="noreferrer">
+        {asset.content_type.startsWith("image/") ? <img src={`/api/client-portal/asset?id=${asset.id}`} alt={asset.caption || asset.filename} /> : <div className="asset-document">PDF</div>}
+        <span>{asset.caption || asset.filename}</span><small>{asset.filename}</small>
+      </a>) : <div className="concierge-empty-visual"><strong>No {category === "vision" ? "looks" : "closet pieces"} added yet.</strong><p>Upload the first visual, reference board, or fitting document above.</p></div>}</div>
+    </div>;
+  };
+
   return (
-    <section className="portal-view client-portal">
-      <header className="view-heading">
-        <div><span>MEMBERS ONLY / PRIVATE CLIENT RECORD</span><h1>{portal.member.display_name}</h1></div>
-        {portal.role === "admin" && (
-          <label className="member-selector"><span>CLIENT</span><select value={target} onChange={(event) => void load(event.target.value)}>
-            {portal.members.map((member) => <option key={member.email} value={member.email}>{member.display_name} · {member.role}</option>)}
-          </select></label>
-        )}
+    <section className="portal-view client-portal concierge-portal">
+      <header className="concierge-heading">
+        <div><span>{adminMode ? "ADMIN CONSOLE / PRIVATE OPERATIONS" : "ABLE1SELF / MEMBERS ONLY"}</span><h1>{adminMode ? "Client operations." : `Welcome, ${String(portal.client.preferred_name || portal.member.display_name).split(" ")[0]}.`}</h1><p>{adminMode ? "Review every active client record, session, asset, order, and administrative change." : "Your private concierge record for profile details, sessions with Shawn, visual direction, fittings, and deliveries."}</p></div>
+        {portal.role === "admin" && <label className="member-selector"><span>ACTIVE CLIENT</span><select value={target} onChange={(event) => { setMeasurementsOpen(false); void load(event.target.value); }}>
+          {portal.members.map((member) => <option key={member.email} value={member.email}>{member.display_name} · {member.role}</option>)}
+        </select></label>}
       </header>
-      <div className="client-tabs" role="tablist">
-        {tabs.map((item) => <button key={item} className={tab===item?"active":""} type="button" onClick={() => setTab(item)}>{item}</button>)}
-      </div>
       {notice && <p className="portal-notice">{notice}</p>}
 
-      {tab === "profile" && <div className="client-profile-stack"><form className="client-form" onSubmit={(event) => {event.preventDefault(); const form=new FormData(event.currentTarget); void patch({action:"save_client",preferredName:form.get("preferredName"),phone:form.get("phone"),shippingAddress:form.get("shippingAddress"),calendlyUrl:form.get("calendlyUrl"),stylistNotes:form.get("stylistNotes")});}}>
+      {adminMode && <section className="admin-command-center">
+        <div className="admin-stat-row">
+          <article><span>Active members</span><strong>{portal.adminStats?.active_members ?? portal.members.length}</strong></article>
+          <article><span>Orders</span><strong>{portal.adminStats?.orders ?? 0}</strong></article>
+          <article><span>Sessions</span><strong>{portal.adminStats?.appointments ?? 0}</strong></article>
+          <article><span>Assets</span><strong>{portal.adminStats?.assets ?? 0}</strong></article>
+        </div>
+        <div className="admin-activity"><header><span>RECENT BACKEND ACTIVITY</span><strong>Audit trail</strong></header>{portal.auditLog.length ? portal.auditLog.map((entry)=><article key={entry.id}><span>{entry.action.replaceAll("_", " ")}</span><strong>{entry.display_name}</strong><p>{entry.actor_email} · {new Date(entry.created_at).toLocaleString()}</p></article>) : <p>No administrative changes have been recorded yet.</p>}</div>
+      </section>}
+
+      <section className="concierge-client-strip">
+        <div className="concierge-avatar">{profileImages[0] ? <img src={`/api/client-portal/asset?id=${profileImages[0].id}`} alt={portal.member.display_name} /> : initials(portal.member.display_name)}</div>
+        <div><span>PRIVATE CLIENT RECORD</span><strong>{portal.member.display_name}</strong><p>{portal.member.email}</p></div>
+        <div className="concierge-measurement-status"><span>Profile readiness</span><strong>{measurementPercent}%</strong><i><b style={{width:`${measurementPercent}%`}} /></i></div>
+        <div className="concierge-next-session"><span>Next session</span><strong>{nextSession ? new Date(nextSession.starts_at).toLocaleDateString("en", {month:"long",day:"numeric",year:"numeric"}) : "Not scheduled"}</strong></div>
+      </section>
+
+      <div className="client-tabs concierge-tabs" role="tablist">
+        {tabs.map((item) => <button key={item} className={tab===item?"active":""} type="button" onClick={() => setTab(item)}>{item}</button>)}
+      </div>
+
+      {tab === "admin" && <div className="admin-client-entry"><span>CLIENT RECORD SELECTED</span><h2>{portal.member.display_name}</h2><p>Use the navigation above to review the client-facing dashboard, profile and measurements, sessions, visual work, closet, and orders exactly as they appear for this account.</p><button type="button" onClick={()=>setTab("dashboard")}>Open selected client dashboard</button></div>}
+
+      {tab === "dashboard" && <div className="concierge-dashboard">
+        <section className="concierge-session-banner"><div><span>NEXT SESSION WITH SHAWN</span><strong>{nextSession?.title || "Schedule the next working session"}</strong><p>{nextSession ? `${new Date(nextSession.starts_at).toLocaleString("en", {month:"long",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${nextSession.notes || nextSession.status}` : "Set the next review, fitting, or visual direction session from the Sessions tab."}</p></div><button type="button" onClick={()=>setTab("sessions")}>View sessions</button></section>
+        <section className="concierge-service-track"><header><span>CLIENT JOURNEY</span><strong>{activeOrder ? activeOrder.title : "Your next delivery"}</strong></header><div>{orderStages.map((stage,index)=><article className={index <= orderStage ? "active" : ""} key={stage}><i /><strong>{String(index+1).padStart(2,"0")}</strong><span>{stage}</span></article>)}</div></section>
+        <div className="concierge-dashboard-grid">
+          <button className="concierge-profile-card" type="button" onClick={()=>setTab("profile")}><span>PROFILE / MEASUREMENTS</span><strong>{completedMeasurements ? `${completedMeasurements} measurements saved` : "Measurements needed"}</strong><p>{completedMeasurements ? "Review or update your current fitting record." : "Open your profile and complete the fitting record when ready."}</p><b>{measurementPercent}% complete →</b></button>
+          <section className="concierge-order-summary"><span>CURRENT ORDER</span><strong>{activeOrder?.title || "No active order"}</strong><p>{activeOrder ? `${activeOrder.order_number} · ${activeOrder.status}` : "Your active commission and delivery status will appear here."}</p><button type="button" onClick={()=>setTab("orders")}>View orders</button></section>
+        </div>
+        <section className="concierge-look-preview"><header><div><span>VISUAL DIRECTION</span><strong>Recent looks and references</strong></div><button type="button" onClick={()=>setTab("looks")}>Open lookbook</button></header><div>{portal.assets.filter((asset)=>asset.category === "vision" && asset.content_type.startsWith("image/")).slice(0,3).map((asset)=><img key={asset.id} src={`/api/client-portal/asset?id=${asset.id}`} alt={asset.caption || asset.filename} />)}{!portal.assets.some((asset)=>asset.category === "vision" && asset.content_type.startsWith("image/")) && <p>Add visual references in Looks to build this private gallery.</p>}</div></section>
+      </div>}
+
+      {tab === "profile" && <div className="client-profile-stack"><section className="profile-record-heading"><div><span>PERSONAL RECORD</span><h2>Profile and fit.</h2><p>Your measurements live here, not in the main Members Only navigation. Open the fitting record only when you need to add or update it.</p></div></section><form className="client-form" onSubmit={(event) => {event.preventDefault(); const form=new FormData(event.currentTarget); void patch({action:"save_client",preferredName:form.get("preferredName"),phone:form.get("phone"),shippingAddress:form.get("shippingAddress"),calendlyUrl:form.get("calendlyUrl"),stylistNotes:form.get("stylistNotes")});}}>
         <label><span>Preferred name</span><input name="preferredName" defaultValue={String(portal.client.preferred_name ?? "")} /></label>
         <label><span>Phone</span><input name="phone" defaultValue={String(portal.client.phone ?? "")} /></label>
         <label className="client-wide"><span>Shipping address</span><textarea name="shippingAddress" defaultValue={String(portal.client.shipping_address ?? "")} /></label>
         <label className="client-wide"><span>Calendly link</span><input name="calendlyUrl" defaultValue={String(portal.client.calendly_url ?? "")} /></label>
         <label className="client-wide"><span>Stylist notes</span><textarea name="stylistNotes" defaultValue={String(portal.client.stylist_notes ?? "")} /></label>
         <button disabled={busy} type="submit">Save profile</button>
-      </form><form className="asset-upload" onSubmit={(event)=>void upload(event,"profile")}><input required name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"/><input name="caption" placeholder="Profile document note"/><button disabled={busy} type="submit">Upload document</button></form></div>}
-
-      {tab === "measurements" && <div className="measurements-panel">
+      </form>
+      <button className={`measurement-entry-card ${completedMeasurements ? "complete" : "needed"}`} type="button" onClick={()=>setMeasurementsOpen((value)=>!value)}><div><span>FIT PROFILE / {portal.measurementFields.length} POINTS</span><strong>{completedMeasurements ? "Current measurements" : "Measurements not completed"}</strong><p>{completedMeasurements ? `${completedMeasurements} of ${portal.measurementFields.length} fields saved · Last measured ${String(portal.measurementSet.measured_at || "date not recorded")}` : "Click to enter your measurements when you are ready. You can return and update them at any time."}</p></div><b>{measurementsOpen ? "Close record ↑" : completedMeasurements ? "Review and update →" : "Add measurements →"}</b></button>
+      {measurementsOpen && <div className="measurements-panel profile-measurements-editor">
         <div className="measurement-meta">
           <label><span>Measurement set</span><input id="measurement-label" defaultValue={String(portal.measurementSet.label ?? "Current")} /></label>
           <label><span>Date measured</span><input id="measurement-date" type="date" defaultValue={String(portal.measurementSet.measured_at ?? "")} /></label>
@@ -2044,16 +2218,15 @@ function ClientPortal() {
         </div>
         <div className="measurement-grid">{portal.measurementFields.map(([key,label], index) => <label key={key}><span>{String(index+1).padStart(2,"0")} · {label}</span><input inputMode="decimal" value={displayed(measurements[key] ?? "")} onChange={(event)=>setMeasurements({...measurements,[key]:stored(event.target.value)})}/><i>{unit}</i></label>)}</div>
         <label className="measurement-notes"><span>Notes</span><textarea id="measurement-notes" defaultValue={String(portal.measurementSet.notes ?? "")} /></label>
-        <button disabled={busy} type="button" onClick={() => void patch({action:"save_measurements",measurements,unit:"in",label:(document.getElementById("measurement-label") as HTMLInputElement)?.value,measuredAt:(document.getElementById("measurement-date") as HTMLInputElement)?.value,measuredBy:(document.getElementById("measurement-by") as HTMLInputElement)?.value,notes:(document.getElementById("measurement-notes") as HTMLTextAreaElement)?.value})}>Save measurements</button>
+        <button disabled={busy} type="button" onClick={() => void patch({action:"save_measurements",measurements,unit:"in",label:(document.getElementById("measurement-label") as HTMLInputElement)?.value,measuredAt:(document.getElementById("measurement-date") as HTMLInputElement)?.value,measuredBy:(document.getElementById("measurement-by") as HTMLInputElement)?.value,notes:(document.getElementById("measurement-notes") as HTMLTextAreaElement)?.value})}>Save fitting record</button>
       </div>}
+      <form className="asset-upload" onSubmit={(event)=>void upload(event,"profile")}><input required name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"/><input name="caption" placeholder="Profile photo or fitting document note"/><button disabled={busy} type="submit">Add profile file</button></form></div>}
 
-      {(tab === "vision" || tab === "closet") && <div className="asset-panel">
-        <form className="asset-upload" onSubmit={(event)=>void upload(event,tab)}><input required name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"/><input name="caption" placeholder="Caption or note"/><button disabled={busy} type="submit">Upload</button></form>
-        <div className="asset-grid">{portal.assets.filter((asset)=>asset.category===tab).map((asset)=><a key={asset.id} href={`/api/client-portal/asset?id=${asset.id}`} target="_blank" rel="noreferrer"><strong>{asset.filename}</strong><span>{asset.caption || "View file"}</span></a>)}</div>
-      </div>}
+      {tab === "looks" && assetCollection("vision", "Looks built with Shawn.", "Collect the references, proposed garments, fabrics, styling directions, and final selections from each working session.")}
+      {tab === "closet" && assetCollection("closet", "Your private closet record.", "Keep delivered pieces, fit notes, garment details, and future combinations visible in one place.")}
 
-      {tab === "calendar" && <div className="client-list">{portal.role === "admin" && <form className="admin-inline-form" onSubmit={(event)=>{event.preventDefault();const form=new FormData(event.currentTarget);void patch({action:"add_appointment",title:form.get("title"),startsAt:form.get("startsAt"),notes:form.get("notes")});event.currentTarget.reset();}}><input required name="title" placeholder="Appointment title"/><input required name="startsAt" type="datetime-local"/><input name="notes" placeholder="Notes"/><button disabled={busy}>Add appointment</button></form>}{portal.appointments.length ? portal.appointments.map((item)=><article key={item.id}><span>{item.starts_at}</span><strong>{item.title}</strong><p>{item.status} · {item.notes}</p></article>) : <p>No appointments scheduled yet.</p>}{Boolean(portal.client.calendly_url) && <a className="client-command" href={String(portal.client.calendly_url)} target="_blank" rel="noreferrer">Book through Calendly</a>}</div>}
-      {tab === "orders" && <div className="client-list">{portal.role === "admin" && <form className="admin-inline-form" onSubmit={(event)=>{event.preventDefault();const form=new FormData(event.currentTarget);void patch({action:"add_order",orderNumber:form.get("orderNumber"),title:form.get("title"),status:form.get("status"),amount:form.get("amount"),trackingUrl:form.get("trackingUrl"),notes:form.get("notes")});event.currentTarget.reset();}}><input required name="orderNumber" placeholder="Order number"/><input required name="title" placeholder="Order title"/><select name="status" defaultValue="planning"><option>planning</option><option>in production</option><option>shipped</option><option>delivered</option></select><input name="amount" placeholder="Amount"/><input name="trackingUrl" placeholder="Tracking URL"/><input name="notes" placeholder="Notes"/><button disabled={busy}>Add order</button></form>}{portal.orders.length ? portal.orders.map((item)=><article key={item.id}><span>{item.order_number} · {item.status}</span><strong>{item.title}</strong><p>{[item.amount,item.notes].filter(Boolean).join(" · ")}</p>{item.tracking_url && <a href={item.tracking_url} target="_blank" rel="noreferrer">Track order</a>}</article>) : <p>No orders recorded yet.</p>}</div>}
+      {tab === "sessions" && <div className="concierge-sessions"><header><span>WORKING SESSIONS</span><h2>Sessions with Shawn.</h2><p>Review what is scheduled and the purpose or outcome of every private working session.</p></header>{portal.role === "admin" && <form className="admin-inline-form" onSubmit={(event)=>{event.preventDefault();const form=new FormData(event.currentTarget);void patch({action:"add_appointment",title:form.get("title"),startsAt:form.get("startsAt"),notes:form.get("notes")});event.currentTarget.reset();}}><input required name="title" placeholder="Session title"/><input required name="startsAt" type="datetime-local"/><input name="notes" placeholder="Purpose, location, or preparation"/><button disabled={busy}>Schedule session</button></form>}<div className="session-ledger">{portal.appointments.length ? portal.appointments.map((item,index)=><article key={item.id}><div><span>{String(index+1).padStart(2,"0")}</span><i /></div><section><small>{new Date(item.starts_at).toLocaleString("en", {weekday:"long",month:"long",day:"numeric",hour:"numeric",minute:"2-digit"})}</small><strong>{item.title}</strong><p>{item.notes || "Session details will be added here."}</p><em>{item.status}</em></section></article>) : <p>No sessions scheduled yet.</p>}</div>{Boolean(portal.client.calendly_url) && <a className="client-command" href={String(portal.client.calendly_url)} target="_blank" rel="noreferrer">Request a time with Shawn</a>}</div>}
+      {tab === "orders" && <div className="concierge-orders"><header><span>COMMISSIONS / DELIVERIES</span><h2>Orders and outcomes.</h2><p>Follow each commission from planning through production and delivery.</p></header>{portal.role === "admin" && <form className="admin-inline-form" onSubmit={(event)=>{event.preventDefault();const form=new FormData(event.currentTarget);void patch({action:"add_order",orderNumber:form.get("orderNumber"),title:form.get("title"),status:form.get("status"),amount:form.get("amount"),trackingUrl:form.get("trackingUrl"),notes:form.get("notes")});event.currentTarget.reset();}}><input required name="orderNumber" placeholder="Order number"/><input required name="title" placeholder="Order title"/><select name="status" defaultValue="planning"><option>planning</option><option>in production</option><option>shipped</option><option>delivered</option></select><input name="amount" placeholder="Amount"/><input name="trackingUrl" placeholder="Tracking URL"/><input name="notes" placeholder="Garment, fabric, fit, or delivery notes"/><button disabled={busy}>Add order</button></form>}<div className="order-card-grid">{portal.orders.length ? portal.orders.map((item)=><article key={item.id}><span>{item.order_number}</span><strong>{item.title}</strong><em className={item.status.replaceAll(" ", "-")}>{item.status}</em><p>{[item.amount,item.notes].filter(Boolean).join(" · ") || "Order details are being prepared."}</p>{item.tracking_url && <a href={item.tracking_url} target="_blank" rel="noreferrer">Track delivery</a>}</article>) : <p>No orders recorded yet.</p>}</div></div>}
     </section>
   );
 }

@@ -322,7 +322,7 @@ test("accepts seeded accounts and rejects shared or invalid credentials", async 
 });
 
 test("ships all revision batches and the private client ownership boundaries", async () => {
-  const [program, identity, astrology, lifePaths, signal, ledger, memberPage, portalStore, adminRoute, migration, hosting] = await Promise.all([
+  const [program, identity, astrology, lifePaths, signal, ledger, memberPage, portalStore, adminRoute, migration, planMigration, revisionCss, hosting] = await Promise.all([
     readFile(new URL("../lib/program-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/identity-engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/astrology-engine.ts", import.meta.url), "utf8"),
@@ -333,6 +333,8 @@ test("ships all revision batches and the private client ownership boundaries", a
     readFile(new URL("../lib/client-portal-store.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/client-portal/admin/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0004_member_portal_revision.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0005_plan_accountability.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/revision.css", import.meta.url), "utf8"),
     readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
   ]);
   assert.match(program, /THE QUESTION BANK — 14 MODULES/);
@@ -347,10 +349,19 @@ test("ships all revision batches and the private client ownership boundaries", a
   assert.match(ledger, /slice\(0,3\)/);
   assert.match(memberPage, /Find and verify location/);
   assert.match(memberPage, /Members Only/);
+  assert.match(memberPage, /Admin console/);
+  assert.match(memberPage, /Measurements not completed/);
+  assert.match(memberPage, /add_plan_checkin/);
+  assert.match(memberPage, /on_track/);
+  assert.match(memberPage, /off_track/);
   assert.equal((portalStore.match(/\["[a-z_]+", "[A-Za-z ]+"\]/g) ?? []).length, 22);
   assert.match(adminRoute, /role !== "admin"/);
   assert.match(migration, /CREATE TABLE `admin_audit_log`/);
   assert.match(migration, /role` = 'admin'[\s\S]*shawndaniels2015@gmail\.com|shawndaniels2015@gmail\.com[\s\S]*role` = 'admin'/);
+  assert.match(planMigration, /CREATE TABLE `plan_checkins`/);
+  assert.match(planMigration, /`explanation` text NOT NULL/);
+  assert.match(revisionCss, /firm type floor/);
+  assert.match(revisionCss, /portal-sidebar nav button \{ font-size: 15px !important/);
   assert.match(hosting, /"r2": "MEMBER_UPLOADS"/);
 });
 

@@ -458,6 +458,7 @@ export async function getMemberData(email: string, preferredName?: string) {
     progressResult,
     responsesResult,
     planResult,
+    planCheckinsResult,
     settings,
     postsResult,
     messagesResult,
@@ -484,8 +485,18 @@ export async function getMemberData(email: string, preferredName?: string) {
       .all<ResponseRow>(),
     db
       .prepare(
-        `SELECT id, title, due_date, status, sort_order, created_at, updated_at
+        `SELECT id, title, why, success_metric, start_date, due_date,
+                checkin_cadence, status, sort_order, created_at, updated_at
          FROM action_plan_items WHERE member_id = ? ORDER BY sort_order, id`,
+      )
+      .bind(profile.id)
+      .all(),
+    db
+      .prepare(
+        `SELECT id, plan_item_id, checkpoint_date, status, explanation,
+                created_at, updated_at
+         FROM plan_checkins WHERE member_id = ?
+         ORDER BY checkpoint_date DESC, id DESC`,
       )
       .bind(profile.id)
       .all(),
@@ -584,6 +595,7 @@ export async function getMemberData(email: string, preferredName?: string) {
     progress,
     responses,
     plan: planResult.results,
+    planCheckins: planCheckinsResult.results,
     settings,
     posts: postsResult.results,
     messages: messagesResult.results,
@@ -652,7 +664,13 @@ type MemberAction = {
   questionKey?: string;
   answer?: AnswerValue;
   title?: string;
+  why?: string;
+  successMetric?: string;
+  startDate?: string;
   dueDate?: string;
+  checkinCadence?: string;
+  checkpointDate?: string;
+  explanation?: string;
   id?: number;
   status?: string;
   displayName?: string;
@@ -844,6 +862,11 @@ export async function updateMemberData(
   } else if (payload.action === "add_plan_item") {
     const title = payload.title?.trim() ?? "";
     if (!title) throw new Error("A plan item needs a title.");
+    const cadence = ["weekly", "biweekly", "monthly"].includes(
+      payload.checkinCadence ?? "",
+    )
+      ? payload.checkinCadence
+      : "weekly";
     const position = await db
       .prepare(
         "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM action_plan_items WHERE member_id = ?",
@@ -853,14 +876,50 @@ export async function updateMemberData(
     await db
       .prepare(
         `INSERT INTO action_plan_items
-         (member_id, title, due_date, status, sort_order, created_at, updated_at)
-         VALUES (?, ?, ?, 'open', ?, ?, ?)`,
+         (member_id, title, why, success_metric, start_date, due_date,
+          checkin_cadence, status, sort_order, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)`,
       )
       .bind(
         profile.id,
         title,
+        payload.why?.trim() ?? "",
+        payload.successMetric?.trim() ?? "",
+        payload.startDate?.trim() ?? "",
         payload.dueDate?.trim() ?? "",
+        cadence,
         position?.next ?? 0,
+        now,
+        now,
+      )
+      .run();
+  } else if (payload.action === "add_plan_checkin") {
+    const status =
+      payload.status === "on_track" || payload.status === "off_track"
+        ? payload.status
+        : "";
+    const explanation = payload.explanation?.trim() ?? "";
+    if (!payload.id || !status || !explanation) {
+      throw new Error("Choose a track status and explain why.");
+    }
+    const item = await db
+      .prepare("SELECT id FROM action_plan_items WHERE id = ? AND member_id = ?")
+      .bind(payload.id, profile.id)
+      .first<{ id: number }>();
+    if (!item) throw new Error("Plan commitment not found.");
+    await db
+      .prepare(
+        `INSERT INTO plan_checkins
+         (member_id, plan_item_id, checkpoint_date, status, explanation,
+          created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        profile.id,
+        item.id,
+        payload.checkpointDate?.trim() || now.slice(0, 10),
+        status,
+        explanation,
         now,
         now,
       )
@@ -879,10 +938,14 @@ export async function updateMemberData(
       )
       .run();
   } else if (payload.action === "delete_plan_item") {
-    await db
-      .prepare("DELETE FROM action_plan_items WHERE id = ? AND member_id = ?")
-      .bind(payload.id, profile.id)
-      .run();
+    await db.batch([
+      db
+        .prepare("DELETE FROM plan_checkins WHERE plan_item_id = ? AND member_id = ?")
+        .bind(payload.id, profile.id),
+      db
+        .prepare("DELETE FROM action_plan_items WHERE id = ? AND member_id = ?")
+        .bind(payload.id, profile.id),
+    ]);
   } else if (payload.action === "save_settings") {
     await db
       .prepare(
