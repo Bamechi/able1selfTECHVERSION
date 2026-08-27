@@ -460,6 +460,7 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
   assert.match(identityEngine, /export const ARCHETYPES/);
   assert.match(identityEngine, /export function assembleProfile/);
   assert.match(store, /ON CONFLICT\(member_id, question_key\)/);
+  assert.match(store, /ON CONFLICT\(member_id, module_key\) DO UPDATE SET/);
   assert.match(store, /persistAssembledProfile/);
   assert.match(store, /mark_notifications_read/);
   assert.match(store, /displayNameFromEmail/);

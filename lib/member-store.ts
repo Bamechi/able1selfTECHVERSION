@@ -145,9 +145,12 @@ async function ensurePilot(email: string, preferredName?: string) {
     programModules.map((programModule) =>
       db
         .prepare(
-          `INSERT OR IGNORE INTO module_progress
+          `INSERT INTO module_progress
            (member_id, module_key, stage, module_order, status, progress, updated_at)
-           VALUES (?, ?, ?, ?, 'not_started', 0, ?)`,
+           VALUES (?, ?, ?, ?, 'not_started', 0, ?)
+           ON CONFLICT(member_id, module_key) DO UPDATE SET
+             stage = excluded.stage,
+             module_order = excluded.module_order`,
         )
         .bind(
           profile.id,
