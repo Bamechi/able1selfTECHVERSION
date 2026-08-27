@@ -1,5 +1,12 @@
 {
   "buildCommand": "next build",
   "framework": "nextjs",
-  "installCommand": "npm ci"
+  "installCommand": "npm ci",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://able1self-journey.b-amechi.chatgpt.site/:path*",
+      "permanent": false
+    }
+  ]
 }
