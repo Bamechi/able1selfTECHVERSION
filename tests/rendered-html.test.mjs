@@ -4,9 +4,9 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const TEST_PASSWORDS = new Map([
-  ["amechi@addcolormedia.com", "amechi-test-password"],
-  ["shawndaniels2015@gmail.com", "shawn-test-password"],
-  ["19keys@19keys.com", "keys-test-password"],
+  ["amechi@addcolormedia.com", "vanta"],
+  ["shawndaniels2015@gmail.com", "vanta"],
+  ["19keys@19keys.com", "vanta"],
 ]);
 
 function passwordRecord(email, name, role = "member") {
@@ -313,12 +313,45 @@ test("accepts seeded accounts and rejects shared or invalid credentials", async 
   assert.equal((await sharedAccess.json()).ok, false);
 
   const outsider = await worker.fetch(
-    request("outsider@example.com", "outsider-password"),
+    request("outsider@example.com", "vanta"),
     runtimeEnv(),
     executionContext(),
   );
   assert.equal(outsider.status, 401);
   assert.equal((await outsider.json()).ok, false);
+});
+
+test("ships all revision batches and the private client ownership boundaries", async () => {
+  const [program, identity, astrology, lifePaths, signal, ledger, memberPage, portalStore, adminRoute, migration, hosting] = await Promise.all([
+    readFile(new URL("../lib/program-data.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/identity-engine.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/astrology-engine.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/life-paths.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/brand-signal.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/brand-ledger.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/member/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/client-portal-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/client-portal/admin/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0004_member_portal_revision.sql", import.meta.url), "utf8"),
+    readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
+  ]);
+  assert.match(program, /THE QUESTION BANK — 14 MODULES/);
+  assert.match(program, /key: "B0"/);
+  assert.match(program, /key: "B4"/);
+  assert.doesNotMatch(program, /key: "a2_element"/);
+  assert.match(identity, /a2_derived_element/);
+  assert.match(astrology, /system: "tropical"/);
+  assert.match(astrology, /degree < 1 \|\| degree > 29/);
+  assert.match(lifePaths, /8: \{ title: "The Executive"/);
+  assert.equal((signal.match(/primaryAxis:/g) ?? []).length, 17);
+  assert.match(ledger, /slice\(0,3\)/);
+  assert.match(memberPage, /Find and verify location/);
+  assert.match(memberPage, /Members Only/);
+  assert.equal((portalStore.match(/\["[a-z_]+", "[A-Za-z ]+"\]/g) ?? []).length, 22);
+  assert.match(adminRoute, /role !== "admin"/);
+  assert.match(migration, /CREATE TABLE `admin_audit_log`/);
+  assert.match(migration, /role` = 'admin'[\s\S]*shawndaniels2015@gmail\.com|shawndaniels2015@gmail\.com[\s\S]*role` = 'admin'/);
+  assert.match(hosting, /"r2": "MEMBER_UPLOADS"/);
 });
 
 test("requires and redeems a valid invite code for account creation", async () => {
@@ -421,7 +454,7 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
   assert.match(memberPage, /PROFILE IN PROGRESS/);
   assert.equal(
     (programData.match(/scoring: "(?:SCORED|FLAVOR|DERIVED)"/g) ?? []).length,
-    72,
+    76,
   );
   assert.match(programData, /title: "Define Your Image"/);
   assert.match(identityEngine, /export const ARCHETYPES/);

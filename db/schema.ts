@@ -206,6 +206,12 @@ export const memberBirthData = sqliteTable("member_birth_data", {
   birthDate: text("birth_date").notNull().default(""),
   birthTime: text("birth_time").notNull().default(""),
   birthCity: text("birth_city").notNull().default(""),
+  birthState: text("birth_state").notNull().default(""),
+  birthCountry: text("birth_country").notNull().default(""),
+  latitude: text("latitude").notNull().default(""),
+  longitude: text("longitude").notNull().default(""),
+  timezone: text("timezone").notNull().default(""),
+  chartJson: text("chart_json").notNull().default("{}"),
   sunSign: text("sun_sign").notNull().default(""),
   moonSign: text("moon_sign").notNull().default(""),
   risingSign: text("rising_sign").notNull().default(""),
@@ -214,6 +220,104 @@ export const memberBirthData = sqliteTable("member_birth_data", {
     .default("pending"),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const clientProfiles = sqliteTable("client_profiles", {
+  memberId: integer("member_id").primaryKey(),
+  phone: text("phone").notNull().default(""),
+  preferredName: text("preferred_name").notNull().default(""),
+  shippingAddress: text("shipping_address").notNull().default(""),
+  calendlyUrl: text("calendly_url").notNull().default(""),
+  stylistNotes: text("stylist_notes").notNull().default(""),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const measurementSets = sqliteTable(
+  "measurement_sets",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    label: text("label").notNull().default("Current"),
+    measuredAt: text("measured_at").notNull().default(""),
+    measuredBy: text("measured_by").notNull().default(""),
+    unit: text("unit").notNull().default("in"),
+    notes: text("notes").notNull().default(""),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("idx_measurement_sets_member").on(table.memberId, table.updatedAt)],
+);
+
+export const measurements = sqliteTable(
+  "measurements",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    setId: integer("set_id").notNull(),
+    measurementKey: text("measurement_key").notNull(),
+    value: text("value").notNull().default(""),
+  },
+  (table) => [uniqueIndex("idx_measurements_set_key").on(table.setId, table.measurementKey)],
+);
+
+export const clientAssets = sqliteTable(
+  "client_assets",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    category: text("category").notNull(),
+    objectKey: text("object_key").notNull().unique(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    size: integer("size").notNull().default(0),
+    caption: text("caption").notNull().default(""),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("idx_client_assets_member").on(table.memberId, table.category)],
+);
+
+export const appointments = sqliteTable(
+  "appointments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    title: text("title").notNull(),
+    startsAt: text("starts_at").notNull(),
+    status: text("status").notNull().default("scheduled"),
+    notes: text("notes").notNull().default(""),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("idx_appointments_member").on(table.memberId, table.startsAt)],
+);
+
+export const clientOrders = sqliteTable(
+  "client_orders",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    orderNumber: text("order_number").notNull(),
+    title: text("title").notNull(),
+    status: text("status").notNull().default("planning"),
+    amount: text("amount").notNull().default(""),
+    trackingUrl: text("tracking_url").notNull().default(""),
+    notes: text("notes").notNull().default(""),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("idx_client_orders_member").on(table.memberId, table.updatedAt)],
+);
+
+export const adminAuditLog = sqliteTable(
+  "admin_audit_log",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    actorEmail: text("actor_email").notNull(),
+    memberId: integer("member_id").notNull(),
+    action: text("action").notNull(),
+    detailJson: text("detail_json").notNull().default("{}"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("idx_admin_audit_member").on(table.memberId, table.createdAt)],
+);
 
 export const profileSections = sqliteTable(
   "profile_sections",

@@ -230,6 +230,23 @@
   font-size: 15px;
 }
 
+.assessment-scale button span {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.assessment-scale:has(button span) > div {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.assessment-scale:has(button span) button {
+  min-height: 116px;
+  aspect-ratio: auto;
+  padding: 12px 10px;
+}
+
 .assessment-scale > p,
 .selection-count {
   font-size: 13px;
@@ -254,6 +271,142 @@
 .assessment-derived h3 {
   font-size: 16px;
 }
+
+.assessment-birth {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.assessment-birth .birth-wide,
+.birth-resolve,
+.birth-results,
+.birth-error,
+.birth-verified {
+  grid-column: 1 / -1;
+}
+
+.birth-resolve {
+  min-height: 50px;
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 6px;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+}
+
+.birth-results {
+  display: grid;
+  gap: 6px;
+}
+
+.birth-results button {
+  display: grid;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 5px;
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.birth-results button strong,
+.birth-results button span,
+.birth-error,
+.birth-verified,
+.cusp-notice {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.birth-results button span,
+.birth-verified { color: rgba(255,255,255,.6); }
+.birth-error,
+.cusp-notice { color: #f2c8c8 !important; }
+
+.energy-result-grid {
+  display: grid;
+  margin: 20px 0;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  border-block: 1px solid rgba(255,255,255,.15);
+}
+
+.energy-result-grid p {
+  display: grid;
+  padding: 14px 8px;
+  gap: 4px;
+}
+
+.energy-result-grid strong { font-size: 16px; }
+.energy-result-grid span { font-size: 12px; color: rgba(255,255,255,.58); }
+
+.client-portal { min-width: 0; }
+.client-portal .view-heading { display:flex; justify-content:space-between; gap:24px; align-items:end; }
+.member-selector { display:grid; gap:7px; min-width:min(320px,100%); }
+.member-selector span,
+.client-form label span,
+.measurement-meta label span,
+.unit-toggle > span,
+.measurement-grid label > span,
+.measurement-notes span { font: 12px/1.4 var(--mono); color:#777; text-transform:uppercase; }
+.member-selector select,
+.client-form input,
+.client-form textarea,
+.measurement-meta input,
+.measurement-grid input,
+.measurement-notes textarea,
+.asset-upload input { min-height:48px; padding:11px 13px; border:1px solid #d7d7d7; border-radius:5px; background:#fff; color:#111; font:16px/1.4 inherit; }
+.client-tabs { display:flex; margin:30px 0 24px; gap:0; overflow-x:auto; border-block:1px solid #ddd; }
+.client-tabs button { min-height:52px; padding:0 20px; border:0; border-right:1px solid #ddd; background:transparent; color:#666; font:14px inherit; text-transform:capitalize; cursor:pointer; white-space:nowrap; }
+.client-tabs button.active { background:#111; color:#fff; }
+.portal-notice { padding:12px 14px; border-left:3px solid #111; background:#f3f3f3; font-size:14px; }
+.client-form,
+.measurement-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.client-form label,
+.measurement-meta label,
+.measurement-notes { display:grid; gap:7px; }
+.client-form .client-wide { grid-column:1/-1; }
+.client-form textarea,
+.measurement-notes textarea { min-height:100px; resize:vertical; }
+.client-form > button,
+.measurements-panel > button,
+.asset-upload button,
+.client-command { justify-self:start; min-height:48px; padding:0 20px; border:1px solid #111; border-radius:5px; background:#111; color:#fff; font:14px inherit; cursor:pointer; }
+.measurement-meta { margin-bottom:24px; grid-template-columns:2fr 1fr 1fr auto; }
+.unit-toggle { display:grid; grid-template-columns:1fr 1fr; align-content:end; }
+.unit-toggle > span { grid-column:1/-1; margin-bottom:7px; }
+.unit-toggle button { min-width:52px; min-height:48px; border:1px solid #ccc; background:#fff; }
+.unit-toggle button.active { background:#111; color:#fff; }
+.measurement-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border-top:1px solid #ddd; border-left:1px solid #ddd; }
+.measurement-grid label { position:relative; display:grid; min-width:0; padding:13px; gap:8px; border-right:1px solid #ddd; border-bottom:1px solid #ddd; }
+.measurement-grid input { padding-right:42px; }
+.measurement-grid i { position:absolute; right:26px; bottom:28px; color:#888; font:12px var(--mono); font-style:normal; text-transform:uppercase; }
+.measurement-notes { margin:20px 0; }
+.asset-upload { display:grid; grid-template-columns:2fr 2fr auto; gap:10px; margin-bottom:24px; }
+.asset-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.asset-grid a,
+.client-list article { display:grid; min-height:108px; padding:18px; gap:8px; border:1px solid #ddd; border-radius:6px; color:#111; text-decoration:none; }
+.asset-grid strong,
+.client-list strong { font-size:17px; }
+.asset-grid span,
+.client-list span,
+.client-list p,
+.client-list a { font-size:14px; line-height:1.5; color:#666; }
+.client-list { display:grid; gap:10px; }
+.client-profile-stack { display:grid; gap:26px; }
+.admin-inline-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:16px; border:1px solid #ccc; background:#f7f7f7; }
+.admin-inline-form input,
+.admin-inline-form select { min-height:46px; padding:10px 12px; border:1px solid #ccc; border-radius:5px; background:#fff; font:15px inherit; }
+.admin-inline-form button { min-height:46px; border:0; border-radius:5px; background:#111; color:#fff; font:14px inherit; cursor:pointer; }
+
+.live-member-portal p,
+.live-member-portal li,
+.live-member-portal input,
+.live-member-portal textarea,
+.live-member-portal select,
+.live-member-portal button { letter-spacing:0; }
 
 .module-player > footer > span {
   font-size: 11px;
@@ -294,4 +447,16 @@
   .assessment-options button {
     font-size: 16px;
   }
+
+  .assessment-birth,
+  .client-form,
+  .measurement-meta,
+  .measurement-grid,
+  .asset-upload,
+  .asset-grid,
+  .admin-inline-form,
+  .energy-result-grid { grid-template-columns:1fr; }
+
+  .client-portal .view-heading { align-items:stretch; flex-direction:column; }
+  .assessment-scale:has(button span) > div { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }

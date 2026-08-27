@@ -1,6 +1,6 @@
 /**
  * ABLE1SELF — PROGRAM DATA
- * Full question bank for the member portal: 4 stages, 12 modules, every question,
+ * Full question bank for the member portal: 4 stages, 14 modules, every question,
  * every option, every scoring tag.
  *
  * Version 2.0 — July 31, 2026 — B. Amechi (High Lvl Management)
@@ -16,6 +16,9 @@
  *   Upgrade the renderer to switch on `control` when ready; until then every question
  *   degrades gracefully to a choice, a text field, or a slider.
  */
+
+import { rejectionBrands, signalPairs } from "./brand-signal";
+import { brandLedgerItems } from "./brand-ledger";
 
 export type QuestionControl =
   | "choice" // pick one
@@ -49,6 +52,7 @@ export type Question = {
   scaleMax?: number;
   scaleLow?: string;
   scaleHigh?: string;
+  stateLabels?: string[];
   /** derived: which computed block to render */
   derivedKey?: string;
   /** external resource, e.g. the free 16Personalities test */
@@ -177,7 +181,7 @@ export const MBTI_TYPES = [
 ] as const;
 
 /* ============================================================
-   THE QUESTION BANK — 12 MODULES
+   THE QUESTION BANK — 14 MODULES
    ============================================================ */
 
 export const programModules: ProgramModule[] = [
@@ -319,7 +323,7 @@ export const programModules: ProgramModule[] = [
         key: "a2_birth",
         prompt: "Your birth details",
         guidance:
-          "Your Sun sign and numerology are calculated live from this. Moon and Rising require exact time and city and are computed by the ephemeris service.",
+          "Enter the exact local birth time and choose the matching city. Your Sun, Moon, Rising, element, and Life Path are calculated from these details.",
         type: "text",
         control: "birth",
         scoring: "SCORED",
@@ -333,21 +337,6 @@ export const programModules: ProgramModule[] = [
         control: "derived",
         scoring: "DERIVED",
         derivedKey: "energy_calc",
-      },
-      {
-        key: "a2_element",
-        prompt: "Which element do you most identify with?",
-        guidance: "Instinct, not astrology knowledge. Pick the one that sounds like you.",
-        type: "choice",
-        control: "choice",
-        scoring: "SCORED",
-        options: [
-          "Fire — drive, passion, action",
-          "Earth — grounded, building, patient",
-          "Air — ideas, connection, movement",
-          "Water — intuition, depth, feeling",
-        ],
-        required: true,
       },
       {
         key: "a2_energy_time",
@@ -500,10 +489,52 @@ export const programModules: ProgramModule[] = [
 
   /* ===================== STAGE B — BRAND ===================== */
   {
-    key: "B1",
+    key: "B0",
     stage: "B",
     stageName: "Brand",
     order: 4,
+    title: "Brand Signal",
+    description:
+      "Reveal the brand instinct you choose before strategy, language, or convention can interfere.",
+    deliverable: "Brand Signal Code",
+    questions: [
+      ...signalPairs.map((pair, index): Question => ({
+        key: pair.key,
+        prompt: `${pair.a.label} or ${pair.b.label}?`,
+        guidance: `Choose on instinct. Pair ${String(index + 1).padStart(2, "0")} of 16.`,
+        type: "choice",
+        control: "choice",
+        scoring: "SCORED",
+        options: [pair.a.label, pair.b.label],
+        required: true,
+      })),
+      {
+        key: "sp_rejections",
+        prompt: "Which two brands are least like the signal you want to send?",
+        guidance: "Choose exactly two. Rejection sharpens the result.",
+        type: "choice",
+        control: "multi",
+        scoring: "SCORED",
+        options: [...rejectionBrands],
+        max: 2,
+        required: true,
+      },
+      {
+        key: "sp_result",
+        prompt: "Your Brand Signal",
+        guidance: "A four-letter code generated from all 16 choices and your rejection pass.",
+        type: "text",
+        control: "derived",
+        scoring: "DERIVED",
+        derivedKey: "brand_signal",
+      },
+    ],
+  },
+  {
+    key: "B1",
+    stage: "B",
+    stageName: "Brand",
+    order: 5,
     title: "Define Your Image",
     description:
       "Translate who you are into how you are read — the signal you send before you speak.",
@@ -614,7 +645,7 @@ export const programModules: ProgramModule[] = [
     key: "B2",
     stage: "B",
     stageName: "Brand",
-    order: 5,
+    order: 6,
     title: "The Image Plan",
     description:
       "Turn the archetype into a wardrobe direction, a palette, and a buying order.",
@@ -700,7 +731,7 @@ export const programModules: ProgramModule[] = [
     key: "B3",
     stage: "B",
     stageName: "Brand",
-    order: 6,
+    order: 7,
     title: "Your Brand Statement",
     description:
       "Compress the whole identity into three sentences a stranger can repeat.",
@@ -768,13 +799,48 @@ export const programModules: ProgramModule[] = [
       },
     ],
   },
+  {
+    key: "B4",
+    stage: "B",
+    stageName: "Brand",
+    order: 8,
+    title: "Brand Ledger",
+    description:
+      "Score the brand as an owned business asset, then focus on the three moves with the highest leverage.",
+    deliverable: "Brand Asset Ledger",
+    questions: [
+      ...brandLedgerItems.map((item): Question => ({
+        key: item.key,
+        prompt: item.prompt,
+        guidance: "Choose the state that is true today. This is an operating audit, not an aspiration.",
+        type: "scale",
+        control: "scale",
+        scoring: "SCORED",
+        scaleMin: 0,
+        scaleMax: 3,
+        scaleLow: item.states[0],
+        scaleHigh: item.states[3],
+        stateLabels: [...item.states],
+        required: true,
+      })),
+      {
+        key: "ledger_result",
+        prompt: "Your Brand Ledger",
+        guidance: "A weighted score out of 1,000 with exactly three priority moves.",
+        type: "text",
+        control: "derived",
+        scoring: "DERIVED",
+        derivedKey: "brand_ledger",
+      },
+    ],
+  },
 
   /* ===================== STAGE L — LEVERAGE ===================== */
   {
     key: "L1",
     stage: "L",
     stageName: "Leverage",
-    order: 7,
+    order: 9,
     title: "Map Your Network",
     description:
       "See the access you already have — and the doors you have not asked to open.",
@@ -854,7 +920,7 @@ export const programModules: ProgramModule[] = [
     key: "L2",
     stage: "L",
     stageName: "Leverage",
-    order: 8,
+    order: 10,
     title: "The Revenue Path",
     description:
       "Convert identity into income — the three routes your current skills and assets already support.",
@@ -950,7 +1016,7 @@ export const programModules: ProgramModule[] = [
     key: "L3",
     stage: "L",
     stageName: "Leverage",
-    order: 9,
+    order: 11,
     title: "Ecosystem & Referrals",
     description:
       "Plug into the member network so opportunity finds you without you chasing it.",
@@ -1018,7 +1084,7 @@ export const programModules: ProgramModule[] = [
     key: "E1",
     stage: "E",
     stageName: "Embark",
-    order: 10,
+    order: 12,
     title: "Your Launch Moment",
     description:
       "Name the one public move that makes the new identity real to other people.",
@@ -1086,7 +1152,7 @@ export const programModules: ProgramModule[] = [
     key: "E2",
     stage: "E",
     stageName: "Embark",
-    order: 11,
+    order: 13,
     title: "Your First 90 Days",
     description:
       "Reverse-engineer the goal into three months, each with one outcome that matters.",
@@ -1170,7 +1236,7 @@ export const programModules: ProgramModule[] = [
     key: "E3",
     stage: "E",
     stageName: "Embark",
-    order: 12,
+    order: 14,
     title: "Your Accountability Structure",
     description:
       "Build the system that keeps this alive after the program ends.",

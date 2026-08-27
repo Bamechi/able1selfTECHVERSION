@@ -1,5 +1,6 @@
 export type AbleRuntimeEnv = {
   DB?: D1Database;
+  MEMBER_UPLOADS?: R2Bucket;
   AUTH_SESSION_SECRET?: string;
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
@@ -22,4 +23,10 @@ export function getD1() {
     );
   }
   return database;
+}
+
+export function getMemberUploads() {
+  const bucket = getRuntimeEnv()?.MEMBER_UPLOADS;
+  if (!bucket) throw new Error("Member file storage is unavailable.");
+  return bucket;
 }

@@ -63,9 +63,11 @@ const profileSectionKeyByModule: Record<string, string> = {
   A1: "personality_snapshot",
   A2: "energy_profile",
   A3: "self_discovery",
+  B0: "brand_signal",
   B1: "style_archetype",
   B2: "image_plan",
   B3: "brand_statement",
+  B4: "brand_ledger",
   L1: "network_map",
   L2: "monetization_roadmap",
   L3: "opportunity_list",
@@ -91,6 +93,11 @@ function hasAnswer(value: AnswerValue) {
   if (typeof value === "string") return value.trim().length > 0;
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === "object") {
+    if ("date" in value || "fullName" in value) {
+      const birth = value as Record<string, unknown>;
+      return ["fullName", "date", "time", "city", "country", "timezone", "latitude", "longitude"]
+        .every((key) => birth[key] !== undefined && birth[key] !== null && String(birth[key]).trim().length > 0);
+    }
     return Object.values(value).some(
       (item) => typeof item === "string" && item.trim().length > 0,
     );
@@ -107,6 +114,7 @@ function rowsToAnswers(rows: ResponseRow[]): AnswerSet {
 async function ensurePilot(email: string, preferredName?: string) {
   const db = getD1();
   const now = new Date().toISOString();
+
   const defaultName =
     preferredName?.trim() ||
     displayNameFromEmail(email);
@@ -354,6 +362,22 @@ async function persistAssembledProfile(
     fullBirthName: birthData?.full_birth_name,
   });
   const now = new Date().toISOString();
+
+  await db
+    .prepare(
+      `UPDATE member_birth_data SET sun_sign = ?, moon_sign = ?, rising_sign = ?,
+       ephemeris_status = ?, chart_json = ?, updated_at = ? WHERE member_id = ?`,
+    )
+    .bind(
+      assembled.energy.sunSign ?? "",
+      assembled.energy.moonSign ?? "",
+      assembled.energy.risingSign ?? "",
+      assembled.energy.moonRisingStatus,
+      JSON.stringify(assembled.energy.chart ?? {}),
+      now,
+      memberId,
+    )
+    .run();
 
   await db.batch(
     assembled.sections.map((section) =>
@@ -689,13 +713,19 @@ export async function updateMemberData(
       await db
         .prepare(
           `UPDATE member_birth_data SET full_birth_name = ?, birth_date = ?,
-           birth_time = ?, birth_city = ?, updated_at = ? WHERE member_id = ?`,
+           birth_time = ?, birth_city = ?, birth_state = ?, birth_country = ?,
+           latitude = ?, longitude = ?, timezone = ?, updated_at = ? WHERE member_id = ?`,
         )
         .bind(
           typeof birth.fullName === "string" ? birth.fullName : "",
           typeof birth.date === "string" ? birth.date : "",
           typeof birth.time === "string" ? birth.time : "",
           typeof birth.city === "string" ? birth.city : "",
+          typeof birth.state === "string" ? birth.state : "",
+          typeof birth.country === "string" ? birth.country : "",
+          typeof birth.latitude === "number" ? String(birth.latitude) : "",
+          typeof birth.longitude === "number" ? String(birth.longitude) : "",
+          typeof birth.timezone === "string" ? birth.timezone : "",
           now,
           profile.id,
         )
@@ -779,7 +809,7 @@ export async function updateMemberData(
     const identityNotice =
       programModule.key === "A3" && assembled.identity
         ? ` Your provisional Core Identity is ${assembled.identity.archetype.name}.`
-        : programModule.key === "B3" && assembled.identity
+        : programModule.key === "B4" && assembled.identity
           ? ` Your Core Identity is locked: ${assembled.identity.archetype.name}.`
           : "";
     await db

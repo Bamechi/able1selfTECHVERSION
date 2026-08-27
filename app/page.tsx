@@ -46,9 +46,11 @@ const stages = [
     detail:
       "Define the value you bring, how you communicate it, and the reputation you want your work to create.",
     modules: [
-      "Position Your Value",
+      "Brand Signal",
+      "Define Your Image",
       "Build Your Presence",
       "Your Brand Statement",
+      "Brand Ledger",
     ],
     output: "Professional positioning",
   },
@@ -90,7 +92,7 @@ const faqs = [
   {
     question: "Is the program self-paced?",
     answer:
-      "Yes. The twelve core modules combine focused video lessons, written reflection, assessments, and practical exercises. Premium and VIP access add human review and coaching support.",
+      "Yes. The fourteen core modules combine focused video lessons, written reflection, assessments, and practical exercises. Premium and VIP access add human review and coaching support.",
   },
   {
     question: "What do I receive at the end?",
@@ -512,7 +514,7 @@ export default function Home() {
             <span>connected stages</span>
           </div>
           <div className="reveal">
-            <strong>12</strong>
+            <strong>14</strong>
             <span>focused modules</span>
           </div>
           <div className="reveal">
@@ -713,7 +715,7 @@ export default function Home() {
           <div>
             <span className="section-label reveal">05 / The curriculum</span>
             <h2 className="reveal">
-              Twelve modules.
+              Fourteen modules.
               <span>One clear next move.</span>
             </h2>
           </div>
@@ -800,7 +802,7 @@ export default function Home() {
               price: "297",
               note: "For the self-directed participant.",
               items: [
-                "Complete 12-module program",
+                "Complete 14-module program",
                 "Personalized Identity Profile",
                 "Accountability partner matching",
                 "Community and messaging access",

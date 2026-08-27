@@ -23,11 +23,26 @@
  * DEPENDENCIES: none. Pure functions. Safe on server or client.
  */
 
+import {
+  calculateAstrology,
+  elementForSign,
+  explainPosition,
+  type AstrologyChart,
+  type BirthInput,
+} from "./astrology-engine";
+import {
+  calculateLifePath,
+  describeLifePath,
+  LIFE_PATH_MEANINGS,
+} from "./life-paths";
+import { describeSignalTension, scoreBrandSignal } from "./brand-signal";
+import { scoreBrandLedger } from "./brand-ledger";
+
 /* ============================================================
    TYPES
    ============================================================ */
 
-export type BirthData = { date?: string; time?: string; city?: string };
+export type BirthData = BirthInput;
 
 export type AnswerValue = string | string[] | number | BirthData | null | undefined;
 
@@ -296,7 +311,7 @@ const AXIS_DEFS: Record<
         },
       },
       {
-        key: "a2_element",
+        key: "a2_derived_element",
         map: {
           "Earth — grounded, building, patient": "S",
           "Fire — drive, passion, action": "C",
@@ -1028,13 +1043,7 @@ function reduceNumber(n: number): number {
 }
 
 /** Life Path from the birth date. Master numbers 11 / 22 / 33 are preserved. */
-export function lifePath(dateISO?: string): number | null {
-  if (!dateISO) return null;
-  const digits = dateISO.replace(/\D/g, "");
-  if (digits.length < 8) return null;
-  const sum = digits.split("").reduce((s, d) => s + Number(d), 0);
-  return reduceNumber(sum);
-}
+export const lifePath = calculateLifePath;
 
 const LETTER_VALUES: Record<string, number> = {
   a: 1, j: 1, s: 1,
@@ -1057,29 +1066,20 @@ export function expressionNumber(fullName?: string): number | null {
   return reduceNumber(sum);
 }
 
-export const NUMBER_MEANINGS: Record<number, { title: string; reading: string }> = {
-  1: { title: "The Leader", reading: "Independence and initiative. You are meant to originate, not inherit. Careers where you set the direction." },
-  2: { title: "The Diplomat", reading: "Partnership and sensitivity. You do your best work beside someone, not above them. Careers built on trust and mediation." },
-  3: { title: "The Communicator", reading: "Expression and creativity. Your voice is the asset. Careers in media, performance, writing, and design." },
-  4: { title: "The Builder", reading: "Structure and discipline. You make things that last. Careers in operations, systems, property, and craft." },
-  5: { title: "The Catalyst", reading: "Freedom and change. Routine kills you. Careers with variety, travel, sales, and reinvention." },
-  6: { title: "The Caretaker", reading: "Responsibility and beauty. You carry people. Careers in service, health, education, and aesthetics." },
-  7: { title: "The Seeker", reading: "Analysis and depth. You need solitude to produce. Careers in research, strategy, and specialist expertise." },
-  8: { title: "The Executive", reading: "Power and material mastery. You are built for ownership. Careers in business, finance, and scale." },
-  9: { title: "The Humanitarian", reading: "Compassion and completion. You serve something larger. Careers in mission-led work, the arts, and leadership of causes." },
-  11: { title: "The Visionary (Master)", reading: "Intuition amplified. You are here to illuminate. High sensitivity, high impact — protect your nervous system." },
-  22: { title: "The Master Builder", reading: "Vision made structural. You can build institutions. The pressure is real; pace it deliberately." },
-  33: { title: "The Master Teacher", reading: "Service at scale. Your growth comes through lifting others. Rare, demanding, and profoundly public." },
-};
+export const NUMBER_MEANINGS = LIFE_PATH_MEANINGS;
 
 export type EnergyProfile = {
   sunSign: string | null;
+  moonSign: string | null;
+  risingSign: string | null;
   lifePath: number | null;
-  lifePathMeaning: { title: string; reading: string } | null;
+  lifePathMeaning: ReturnType<typeof describeLifePath>;
   expression: number | null;
   expressionMeaning: { title: string; reading: string } | null;
   element: string | null;
-  moonRisingStatus: "computed_by_ephemeris" | "needs_birth_time_and_city";
+  chart: AstrologyChart | null;
+  explanations: string[];
+  moonRisingStatus: "calculated" | "needs_birth_time_and_city" | "verify_cusp";
 };
 
 export function resolveEnergyProfile(
@@ -1087,24 +1087,31 @@ export function resolveEnergyProfile(
   fullBirthName?: string,
 ): EnergyProfile {
   const birth = (answers["a2_birth"] as BirthData) ?? {};
-  let sun: string | null = null;
-  if (birth.date) {
-    const [, mo, d] = birth.date.split("-").map(Number);
-    sun = sunSign(mo, d);
-  }
-  const lp = lifePath(birth.date);
+  const chart = calculateAstrology(birth);
+  const lp = calculateLifePath(birth.date);
   const ex = expressionNumber(fullBirthName);
+  const explanations = chart
+    ? [
+        explainPosition("sun", chart.sun.sign),
+        explainPosition("moon", chart.moon.sign),
+        explainPosition("rising", chart.rising.sign),
+      ]
+    : [];
+  const verifyCusp = Boolean(chart && [chart.sun, chart.moon, chart.rising].some((item) => item.cusp));
   return {
-    sunSign: sun,
+    sunSign: chart?.sun.sign ?? null,
+    moonSign: chart?.moon.sign ?? null,
+    risingSign: chart?.rising.sign ?? null,
     lifePath: lp,
-    lifePathMeaning: lp ? NUMBER_MEANINGS[lp] ?? null : null,
+    lifePathMeaning: describeLifePath(lp),
     expression: ex,
     expressionMeaning: ex ? NUMBER_MEANINGS[ex] ?? null : null,
-    element: asString(answers["a2_element"]) || null,
-    moonRisingStatus:
-      birth.time && birth.city
-        ? "computed_by_ephemeris"
-        : "needs_birth_time_and_city",
+    element: elementForSign(chart?.sun.sign) ?? null,
+    chart,
+    explanations,
+    moonRisingStatus: chart
+      ? verifyCusp ? "verify_cusp" : "calculated"
+      : "needs_birth_time_and_city",
   };
 }
 
@@ -1319,6 +1326,8 @@ export type AssembledProfile = {
   styleArchetype: StyleArchetype | null;
   palette: Palette | null;
   energy: EnergyProfile;
+  brandSignal: ReturnType<typeof scoreBrandSignal>;
+  brandLedger: ReturnType<typeof scoreBrandLedger>;
   incomeStreams: IncomeStream[];
   brandStatement: string | null;
   sections: ProfileSection[];
@@ -1334,12 +1343,19 @@ export function assembleProfile(input: {
   const { answers, completedModules, fullBirthName } = input;
   const done = new Set(completedModules);
   const analyzeComplete = ["A1", "A2", "A3"].every((k) => done.has(k));
-  const brandComplete = ["B1", "B2", "B3"].every((k) => done.has(k));
-
-  const identity = analyzeComplete ? resolveIdentity(answers, brandComplete) : null;
+  const brandComplete = ["B0", "B1", "B2", "B3", "B4"].every((k) => done.has(k));
   const styleArchetype = resolveStyleArchetype(answers);
   const palette = resolvePalette(answers);
   const energy = resolveEnergyProfile(answers, fullBirthName);
+  const computedAnswers: AnswerSet = {
+    ...answers,
+    a2_derived_element: energy.element
+      ? `${energy.element} — calculated from your Sun sign`
+      : null,
+  };
+  const identity = analyzeComplete ? resolveIdentity(computedAnswers, brandComplete) : null;
+  const brandSignal = scoreBrandSignal(answers);
+  const brandLedger = scoreBrandLedger(answers);
   const incomeStreams = resolveIncomeStreams(answers);
   const brandStatement = assembleBrandStatement(answers);
 
@@ -1387,6 +1403,16 @@ export function assembleProfile(input: {
       }),
     },
     {
+      key: "brand_signal",
+      moduleKey: "B0",
+      stage: "B",
+      title: "Brand Signal Code",
+      build: () => ({
+        ...brandSignal,
+        identityTension: describeSignalTension(identity?.code, brandSignal),
+      }),
+    },
+    {
       key: "style_archetype",
       moduleKey: "B1",
       stage: "B",
@@ -1417,6 +1443,13 @@ export function assembleProfile(input: {
       stage: "B",
       title: "Personal Brand Statement",
       build: () => ({ statement: brandStatement, voice: answers["b3_voice"] ?? null }),
+    },
+    {
+      key: "brand_ledger",
+      moduleKey: "B4",
+      stage: "B",
+      title: "Brand Asset Ledger",
+      build: () => ({ ...brandLedger }),
     },
     {
       key: "network_map",
@@ -1509,18 +1542,20 @@ export function assembleProfile(input: {
     };
   });
 
-  const completion = Math.round((done.size / 12) * 100);
+  const completion = Math.round((done.size / 14) * 100);
 
   return {
     identity,
     styleArchetype,
     palette,
     energy,
+    brandSignal,
+    brandLedger,
     incomeStreams,
     brandStatement,
     sections,
     completion,
-    complete: done.size === 12,
+    complete: done.size === 14,
   };
 }
 

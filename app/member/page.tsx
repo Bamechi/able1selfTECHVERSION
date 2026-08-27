@@ -23,6 +23,8 @@ import {
   programModules,
   stages,
 } from "../../lib/program-data";
+import { scoreBrandLedger } from "../../lib/brand-ledger";
+import { scoreBrandSignal } from "../../lib/brand-signal";
 
 type PortalView =
   | "overview"
@@ -30,6 +32,7 @@ type PortalView =
   | "profile"
   | "plan"
   | "guide"
+  | "client"
   | "community"
   | "messages"
   | "settings";
@@ -139,6 +142,7 @@ const navigation: Array<{
   { id: "profile", label: "My profile", symbol: "◎" },
   { id: "plan", label: "90-day plan", symbol: "↗" },
   { id: "guide", label: "AI Guide", symbol: "◇" },
+  { id: "client", label: "Members Only", symbol: "◆" },
   { id: "community", label: "The Room", symbol: "◌" },
   { id: "messages", label: "Messages", symbol: "↗" },
   { id: "settings", label: "Settings", symbol: "⌘" },
@@ -182,6 +186,120 @@ function initials(name: string) {
       .join("")
       .slice(0, 2)
       .toUpperCase() || "A"
+  );
+}
+
+type GeocodeResult = {
+  name: string;
+  admin1: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+};
+
+function BirthField({
+  value,
+  onChange,
+}: {
+  value: AnswerValue;
+  onChange: (value: AnswerValue) => void;
+}) {
+  const birth =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, string | number>)
+      : {};
+  const [results, setResults] = useState<GeocodeResult[]>([]);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const update = (key: string, next: string | number) =>
+    onChange({ ...birth, [key]: next } as AnswerValue);
+
+  async function resolveLocation() {
+    setLocating(true);
+    setLocationError("");
+    try {
+      const query = [birth.city, birth.state, birth.country]
+        .filter(Boolean)
+        .join(", ");
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+      const payload = (await response.json()) as {
+        results?: GeocodeResult[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(payload.error ?? "Location lookup failed.");
+      setResults(payload.results ?? []);
+      if (!(payload.results ?? []).length) setLocationError("No matching cities found. Check the spelling and try again.");
+    } catch (error) {
+      setLocationError(error instanceof Error ? error.message : "Location lookup failed.");
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  return (
+    <div className="assessment-birth">
+      <label className="birth-wide">
+        <span>FULL BIRTH NAME</span>
+        <input
+          value={String(birth.fullName ?? "")}
+          onChange={(event) => update("fullName", event.target.value)}
+          placeholder="As it appears on your birth certificate"
+        />
+      </label>
+      <label>
+        <span>BIRTH DATE</span>
+        <input type="date" value={String(birth.date ?? "")} onChange={(event) => update("date", event.target.value)} />
+      </label>
+      <label>
+        <span>LOCAL BIRTH TIME</span>
+        <input type="time" value={String(birth.time ?? "")} onChange={(event) => update("time", event.target.value)} />
+      </label>
+      <label>
+        <span>CITY</span>
+        <input value={String(birth.city ?? "")} onChange={(event) => update("city", event.target.value)} placeholder="Chicago" />
+      </label>
+      <label>
+        <span>STATE / PROVINCE</span>
+        <input value={String(birth.state ?? "")} onChange={(event) => update("state", event.target.value)} placeholder="Illinois" />
+      </label>
+      <label className="birth-wide">
+        <span>COUNTRY</span>
+        <input value={String(birth.country ?? "")} onChange={(event) => update("country", event.target.value)} placeholder="United States" />
+      </label>
+      <button className="birth-resolve" type="button" disabled={locating || !birth.city} onClick={resolveLocation}>
+        {locating ? "Finding locations..." : birth.timezone ? "Change verified location" : "Find and verify location"}
+      </button>
+      {locationError && <p className="birth-error">{locationError}</p>}
+      {results.length > 0 && (
+        <div className="birth-results" role="listbox" aria-label="Matching birth locations">
+          {results.map((result) => (
+            <button
+              key={`${result.latitude}-${result.longitude}`}
+              type="button"
+              onClick={() => {
+                onChange({
+                  ...birth,
+                  city: result.name,
+                  state: result.admin1,
+                  country: result.country,
+                  latitude: result.latitude,
+                  longitude: result.longitude,
+                  timezone: result.timezone,
+                } as AnswerValue);
+                setResults([]);
+              }}
+            >
+              <strong>{result.name}</strong>
+              <span>{[result.admin1, result.country].filter(Boolean).join(", ")} · {result.timezone}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {birth.timezone && (
+        <p className="birth-verified">Location verified · {String(birth.timezone)}</p>
+      )}
+    </div>
   );
 }
 
@@ -321,8 +439,10 @@ function AnswerField({
                 key={number}
                 type="button"
                 onClick={() => onChange(number)}
+                aria-label={question.stateLabels?.[number - min] ?? String(number)}
               >
                 {number}
+                {question.stateLabels && <span>{question.stateLabels[number - min]}</span>}
               </button>
             ),
           )}
@@ -336,48 +456,7 @@ function AnswerField({
   }
 
   if (question.control === "birth") {
-    const birth =
-      value && typeof value === "object" && !Array.isArray(value)
-        ? (value as Record<string, string>)
-        : {};
-    const update = (key: string, next: string) =>
-      onChange({ ...birth, [key]: next } as AnswerValue);
-    return (
-      <div className="assessment-birth">
-        <label>
-          <span>FULL BIRTH NAME</span>
-          <input
-            value={birth.fullName ?? ""}
-            onChange={(event) => update("fullName", event.target.value)}
-            placeholder="As it appears on your birth certificate"
-          />
-        </label>
-        <label>
-          <span>BIRTH DATE</span>
-          <input
-            type="date"
-            value={birth.date ?? ""}
-            onChange={(event) => update("date", event.target.value)}
-          />
-        </label>
-        <label>
-          <span>BIRTH TIME</span>
-          <input
-            type="time"
-            value={birth.time ?? ""}
-            onChange={(event) => update("time", event.target.value)}
-          />
-        </label>
-        <label>
-          <span>BIRTH CITY</span>
-          <input
-            value={birth.city ?? ""}
-            onChange={(event) => update("city", event.target.value)}
-            placeholder="City, state or country"
-          />
-        </label>
-      </div>
-    );
+    return <BirthField value={value} onChange={onChange} />;
   }
 
   if (question.control === "text") {
@@ -407,6 +486,11 @@ function hasAnswer(value: AnswerValue) {
   if (typeof value === "string") return value.trim().length > 0;
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === "object") {
+    if ("date" in value || "fullName" in value) {
+      const birth = value as Record<string, unknown>;
+      return ["fullName", "date", "time", "city", "country", "timezone", "latitude", "longitude"]
+        .every((key) => birth[key] !== undefined && birth[key] !== null && String(birth[key]).trim().length > 0);
+    }
     return Object.values(value).some(
       (item) => typeof item === "string" && item.trim().length > 0,
     );
@@ -490,15 +574,46 @@ function ModulePlayer({
         <>
           <span>ENERGY SIGNATURE</span>
           <h3>
-            {assembled.energy.sunSign ?? "Add your birth date"}
-            {assembled.energy.lifePath
-              ? ` · Life Path ${assembled.energy.lifePath}`
-              : ""}
+            {assembled.energy.sunSign ? `${assembled.energy.sunSign} Sun` : "Add and verify your birth details"}
           </h3>
-          <p>
-            Expression number {assembled.energy.expression ?? "—"}. Moon and
-            Rising activate when the ephemeris service is connected.
-          </p>
+          {assembled.energy.chart ? (
+            <div className="energy-result-grid">
+              <p><strong>{assembled.energy.moonSign}</strong><span>Moon</span></p>
+              <p><strong>{assembled.energy.risingSign}</strong><span>Rising</span></p>
+              <p><strong>{assembled.energy.element}</strong><span>Element</span></p>
+              <p><strong>{assembled.energy.lifePath}</strong><span>Life Path · {assembled.energy.lifePathMeaning?.title}</span></p>
+            </div>
+          ) : (
+            <p>Exact local time and a verified city are required for Moon and Rising.</p>
+          )}
+          {assembled.energy.moonRisingStatus === "verify_cusp" && (
+            <p className="cusp-notice">One position is within 1° of a sign boundary. Verify the birth time before treating that sign as final.</p>
+          )}
+          {assembled.energy.explanations.map((explanation) => <p key={explanation}>{explanation}</p>)}
+          {assembled.energy.lifePathMeaning && <p>{assembled.energy.lifePathMeaning.reading}</p>}
+        </>
+      );
+    }
+    if (question.derivedKey === "brand_signal") {
+      const signal = scoreBrandSignal(answers);
+      return (
+        <>
+          <span>BRAND SIGNAL</span>
+          <h3>{signal ? `${signal.code} · ${signal.profile.name}` : "Complete all instinct pairs"}</h3>
+          <p>{signal?.profile.read}</p>
+          {signal && <p><strong>Best next investment:</strong> {signal.profile.buys}</p>}
+        </>
+      );
+    }
+    if (question.derivedKey === "brand_ledger") {
+      const ledger = scoreBrandLedger(answers);
+      return (
+        <>
+          <span>BRAND LEDGER</span>
+          <h3>{ledger ? `${ledger.score} / 1,000 · ${ledger.band}` : "Complete the asset audit"}</h3>
+          {ledger?.nextMoves.map((move, index) => (
+            <p key={move.key}><strong>0{index + 1} · {move.name}</strong> · {move.move}</p>
+          ))}
         </>
       );
     }
@@ -1032,7 +1147,7 @@ export default function MemberPage() {
                 </p>
               </div>
               <em>
-                {data.profile.completedModules}/12 modules complete
+                {data.profile.completedModules}/{programModules.length} modules complete
               </em>
               <b>Continue profile →</b>
             </button>
@@ -1063,6 +1178,7 @@ export default function MemberPage() {
             <Plan data={data} saving={saving} mutate={mutate} />
           )}
           {view === "guide" && <Guide data={data} />}
+          {view === "client" && <ClientPortal />}
           {view === "community" && (
             <Community data={data} saving={saving} mutate={mutate} />
           )}
@@ -1193,7 +1309,7 @@ function Overview({
       <div className="portal-stat-grid">
         <article>
           <span>Modules complete</span>
-          <strong>{data.profile.completedModules}/12</strong>
+          <strong>{data.profile.completedModules}/{programModules.length}</strong>
           <small>Every response is stored</small>
         </article>
         <article>
@@ -1283,7 +1399,7 @@ function Program({
           <span className="portal-eyebrow">THE ABLE PROGRAM</span>
           <h1>Your complete path.</h1>
           <p>
-            Twelve focused modules. Your progress and every response are saved.
+            Fourteen focused modules. Your progress and every response are saved.
           </p>
         </div>
         <strong className="program-total">
@@ -1300,7 +1416,7 @@ function Program({
             data.progress.find((item) => item.module_key === module.key),
           );
           const stageProgress = Math.round(
-            progress.reduce((sum, item) => sum + (item?.progress ?? 0), 0) / 3,
+            progress.reduce((sum, item) => sum + (item?.progress ?? 0), 0) / modules.length,
           );
           return (
             <article key={stage.letter}>
@@ -1371,7 +1487,7 @@ function Program({
   );
 }
 
-function downloadIdentityCard(identity: NonNullable<MemberData["identity"]>) {
+function downloadIdentityCard(identity: NonNullable<MemberData["identity"]>, data: MemberData) {
   const canvas = document.createElement("canvas");
   canvas.width = 1200;
   canvas.height = 630;
@@ -1396,6 +1512,18 @@ function downloadIdentityCard(identity: NonNullable<MemberData["identity"]>) {
   context.fillStyle = "rgba(255,255,255,.65)";
   context.font = "30px Manrope, sans-serif";
   context.fillText(identity.archetype.tagline, 84, 390, 1020);
+  const energy = data.derived?.energy ?? {};
+  const energyLine = [
+    energy.sunSign && `${energy.sunSign} Sun`,
+    energy.moonSign && `${energy.moonSign} Moon`,
+    energy.risingSign && `${energy.risingSign} Rising`,
+    energy.lifePath && `Life Path ${energy.lifePath}`,
+  ].filter(Boolean).join("  ·  ");
+  if (energyLine) {
+    context.fillStyle = "rgba(255,255,255,.72)";
+    context.font = "22px Manrope, sans-serif";
+    context.fillText(energyLine, 84, 454, 1020);
+  }
   context.fillStyle = "rgba(255,255,255,.42)";
   context.font = "18px monospace";
   context.fillText("ONE SELF. ALIGNED.  /  ABLE1SELF.COM", 84, 536);
@@ -1424,7 +1552,7 @@ function Profile({ data }: { data: MemberData }) {
             </div>
             <div className="core-head-actions">
               {data.identity.provisional && <i>PROVISIONAL · LOCKS AFTER BRAND</i>}
-              <button type="button" onClick={() => downloadIdentityCard(data.identity!)}>
+              <button type="button" onClick={() => downloadIdentityCard(data.identity!, data)}>
                 Download share card ↗
               </button>
             </div>
@@ -1499,7 +1627,7 @@ function Profile({ data }: { data: MemberData }) {
             <span>YOUR PERSONALIZED PROFILE</span>
             <h2>Twelve connected deliverables.</h2>
           </div>
-          <strong>{data.profile.completedModules}/12</strong>
+          <strong>{data.profile.completedModules}/{programModules.length}</strong>
         </header>
         <div>
           {data.profileSections.map((section, index) => (
@@ -1814,9 +1942,126 @@ function Messages({
   );
 }
 
+type ClientPortalData = {
+  role: string;
+  member: { email:string; display_name:string };
+  members: Array<{email:string;display_name:string;role:string}>;
+  client: Record<string, unknown>;
+  measurementSet: Record<string, unknown>;
+  measurements: Record<string, string>;
+  measurementFields: Array<[string, string]>;
+  assets: Array<{id:number;category:string;filename:string;caption:string}>;
+  appointments: Array<{id:number;title:string;starts_at:string;status:string;notes:string}>;
+  orders: Array<{id:number;order_number:string;title:string;status:string;amount:string;tracking_url:string;notes:string}>;
+};
+
+function ClientPortal() {
+  const [portal, setPortal] = useState<ClientPortalData | null>(null);
+  const [tab, setTab] = useState("measurements");
+  const [target, setTarget] = useState("");
+  const [measurements, setMeasurements] = useState<Record<string,string>>({});
+  const [unit, setUnit] = useState("in");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  async function load(selected?: string) {
+    setBusy(true);
+    try {
+      const suffix = selected ? `?member=${encodeURIComponent(selected)}` : "";
+      const response = await fetch(`/api/client-portal${suffix}`, { cache:"no-store" });
+      const result = await response.json() as {data?:ClientPortalData;error?:string};
+      if (!response.ok || !result.data) throw new Error(result.error ?? "Unable to load Members Only.");
+      setPortal(result.data);
+      setTarget(result.data.member.email);
+      setMeasurements(result.data.measurements);
+      setUnit(String(result.data.measurementSet.unit ?? "in"));
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to load Members Only."); }
+    finally { setBusy(false); }
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  async function patch(payload: Record<string,unknown>) {
+    setBusy(true); setNotice("");
+    try {
+      const response = await fetch("/api/client-portal", { method:"PATCH", headers:{"content-type":"application/json"}, body:JSON.stringify({ ...payload, targetEmail:target }) });
+      const result = await response.json() as {data?:ClientPortalData;error?:string};
+      if (!response.ok || !result.data) throw new Error(result.error ?? "Unable to save.");
+      setPortal(result.data); setMeasurements(result.data.measurements); setNotice("Saved.");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to save."); }
+    finally { setBusy(false); }
+  }
+
+  async function upload(event: FormEvent<HTMLFormElement>, category: string) {
+    event.preventDefault(); setBusy(true); setNotice("");
+    const form = new FormData(event.currentTarget); form.set("category", category); form.set("member", target);
+    try {
+      const response = await fetch("/api/client-portal/upload", { method:"POST", body:form });
+      const result = await response.json() as {data?:ClientPortalData;error?:string};
+      if (!response.ok || !result.data) throw new Error(result.error ?? "Upload failed.");
+      setPortal(result.data); setNotice("File uploaded."); event.currentTarget.reset();
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Upload failed."); }
+    finally { setBusy(false); }
+  }
+
+  if (!portal) return <section className="portal-view client-portal"><p>{busy ? "Loading Members Only..." : notice}</p></section>;
+  const displayed = (value:string) => unit === "cm" && value ? (Number(value) * 2.54).toFixed(1) : value;
+  const stored = (value:string) => unit === "cm" && value ? (Number(value) / 2.54).toFixed(2).replace(/0+$/, "").replace(/\.$/, "") : value;
+  const tabs = ["profile", "measurements", "calendar", "vision", "closet", "orders"];
+  return (
+    <section className="portal-view client-portal">
+      <header className="view-heading">
+        <div><span>MEMBERS ONLY / PRIVATE CLIENT RECORD</span><h1>{portal.member.display_name}</h1></div>
+        {portal.role === "admin" && (
+          <label className="member-selector"><span>CLIENT</span><select value={target} onChange={(event) => void load(event.target.value)}>
+            {portal.members.map((member) => <option key={member.email} value={member.email}>{member.display_name} · {member.role}</option>)}
+          </select></label>
+        )}
+      </header>
+      <div className="client-tabs" role="tablist">
+        {tabs.map((item) => <button key={item} className={tab===item?"active":""} type="button" onClick={() => setTab(item)}>{item}</button>)}
+      </div>
+      {notice && <p className="portal-notice">{notice}</p>}
+
+      {tab === "profile" && <div className="client-profile-stack"><form className="client-form" onSubmit={(event) => {event.preventDefault(); const form=new FormData(event.currentTarget); void patch({action:"save_client",preferredName:form.get("preferredName"),phone:form.get("phone"),shippingAddress:form.get("shippingAddress"),calendlyUrl:form.get("calendlyUrl"),stylistNotes:form.get("stylistNotes")});}}>
+        <label><span>Preferred name</span><input name="preferredName" defaultValue={String(portal.client.preferred_name ?? "")} /></label>
+        <label><span>Phone</span><input name="phone" defaultValue={String(portal.client.phone ?? "")} /></label>
+        <label className="client-wide"><span>Shipping address</span><textarea name="shippingAddress" defaultValue={String(portal.client.shipping_address ?? "")} /></label>
+        <label className="client-wide"><span>Calendly link</span><input name="calendlyUrl" defaultValue={String(portal.client.calendly_url ?? "")} /></label>
+        <label className="client-wide"><span>Stylist notes</span><textarea name="stylistNotes" defaultValue={String(portal.client.stylist_notes ?? "")} /></label>
+        <button disabled={busy} type="submit">Save profile</button>
+      </form><form className="asset-upload" onSubmit={(event)=>void upload(event,"profile")}><input required name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"/><input name="caption" placeholder="Profile document note"/><button disabled={busy} type="submit">Upload document</button></form></div>}
+
+      {tab === "measurements" && <div className="measurements-panel">
+        <div className="measurement-meta">
+          <label><span>Measurement set</span><input id="measurement-label" defaultValue={String(portal.measurementSet.label ?? "Current")} /></label>
+          <label><span>Date measured</span><input id="measurement-date" type="date" defaultValue={String(portal.measurementSet.measured_at ?? "")} /></label>
+          <label><span>Measured by</span><input id="measurement-by" defaultValue={String(portal.measurementSet.measured_by ?? "")} /></label>
+          <div className="unit-toggle"><span>Units</span><button className={unit==="in"?"active":""} type="button" onClick={()=>setUnit("in")}>IN</button><button className={unit==="cm"?"active":""} type="button" onClick={()=>setUnit("cm")}>CM</button></div>
+        </div>
+        <div className="measurement-grid">{portal.measurementFields.map(([key,label], index) => <label key={key}><span>{String(index+1).padStart(2,"0")} · {label}</span><input inputMode="decimal" value={displayed(measurements[key] ?? "")} onChange={(event)=>setMeasurements({...measurements,[key]:stored(event.target.value)})}/><i>{unit}</i></label>)}</div>
+        <label className="measurement-notes"><span>Notes</span><textarea id="measurement-notes" defaultValue={String(portal.measurementSet.notes ?? "")} /></label>
+        <button disabled={busy} type="button" onClick={() => void patch({action:"save_measurements",measurements,unit:"in",label:(document.getElementById("measurement-label") as HTMLInputElement)?.value,measuredAt:(document.getElementById("measurement-date") as HTMLInputElement)?.value,measuredBy:(document.getElementById("measurement-by") as HTMLInputElement)?.value,notes:(document.getElementById("measurement-notes") as HTMLTextAreaElement)?.value})}>Save measurements</button>
+      </div>}
+
+      {(tab === "vision" || tab === "closet") && <div className="asset-panel">
+        <form className="asset-upload" onSubmit={(event)=>void upload(event,tab)}><input required name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"/><input name="caption" placeholder="Caption or note"/><button disabled={busy} type="submit">Upload</button></form>
+        <div className="asset-grid">{portal.assets.filter((asset)=>asset.category===tab).map((asset)=><a key={asset.id} href={`/api/client-portal/asset?id=${asset.id}`} target="_blank" rel="noreferrer"><strong>{asset.filename}</strong><span>{asset.caption || "View file"}</span></a>)}</div>
+      </div>}
+
+      {tab === "calendar" && <div className="client-list">{portal.role === "admin" && <form className="admin-inline-form" onSubmit={(event)=>{event.preventDefault();const form=new FormData(event.currentTarget);void patch({action:"add_appointment",title:form.get("title"),startsAt:form.get("startsAt"),notes:form.get("notes")});event.currentTarget.reset();}}><input required name="title" placeholder="Appointment title"/><input required name="startsAt" type="datetime-local"/><input name="notes" placeholder="Notes"/><button disabled={busy}>Add appointment</button></form>}{portal.appointments.length ? portal.appointments.map((item)=><article key={item.id}><span>{item.starts_at}</span><strong>{item.title}</strong><p>{item.status} · {item.notes}</p></article>) : <p>No appointments scheduled yet.</p>}{Boolean(portal.client.calendly_url) && <a className="client-command" href={String(portal.client.calendly_url)} target="_blank" rel="noreferrer">Book through Calendly</a>}</div>}
+      {tab === "orders" && <div className="client-list">{portal.role === "admin" && <form className="admin-inline-form" onSubmit={(event)=>{event.preventDefault();const form=new FormData(event.currentTarget);void patch({action:"add_order",orderNumber:form.get("orderNumber"),title:form.get("title"),status:form.get("status"),amount:form.get("amount"),trackingUrl:form.get("trackingUrl"),notes:form.get("notes")});event.currentTarget.reset();}}><input required name="orderNumber" placeholder="Order number"/><input required name="title" placeholder="Order title"/><select name="status" defaultValue="planning"><option>planning</option><option>in production</option><option>shipped</option><option>delivered</option></select><input name="amount" placeholder="Amount"/><input name="trackingUrl" placeholder="Tracking URL"/><input name="notes" placeholder="Notes"/><button disabled={busy}>Add order</button></form>}{portal.orders.length ? portal.orders.map((item)=><article key={item.id}><span>{item.order_number} · {item.status}</span><strong>{item.title}</strong><p>{[item.amount,item.notes].filter(Boolean).join(" · ")}</p>{item.tracking_url && <a href={item.tracking_url} target="_blank" rel="noreferrer">Track order</a>}</article>) : <p>No orders recorded yet.</p>}</div>}
+    </section>
+  );
+}
+
 function Guide({ data }: { data: MemberData }) {
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState("");
+  const [asking, setAsking] = useState(false);
   const starters = data.identity
     ? [
         `What does being ${data.identity.archetype.name} mean for how I sell?`,
@@ -1862,11 +2107,16 @@ function Guide({ data }: { data: MemberData }) {
             ))}
           </div>
           <form
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
-              setNotice(
-                "Your question is ready. A live LLM connection is required before the Guide can generate a grounded response.",
-              );
+              setAsking(true); setNotice("");
+              try {
+                const response = await fetch("/api/guide", {method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({question:draft})});
+                const result = await response.json() as {answer?:string;error?:string};
+                if (!response.ok || !result.answer) throw new Error(result.error ?? "Guide request failed.");
+                setNotice(result.answer);
+              } catch (error) { setNotice(error instanceof Error ? error.message : "Guide request failed."); }
+              finally { setAsking(false); }
             }}
           >
             <textarea
@@ -1876,7 +2126,7 @@ function Guide({ data }: { data: MemberData }) {
               rows={4}
               required
             />
-            <button type="submit">Prepare question →</button>
+            <button disabled={asking} type="submit">{asking ? "Reading your profile..." : "Ask the Guide →"}</button>
           </form>
           {notice && <p className="guide-notice">{notice}</p>}
         </section>
@@ -1893,17 +2143,14 @@ function Guide({ data }: { data: MemberData }) {
           <article>
             <small>PROFILE SECTIONS</small>
             <strong>
-              {data.profileSections.filter((section) => !section.locked).length} / 12 ready
+              {data.profileSections.filter((section) => !section.locked).length} / {programModules.length} ready
             </strong>
           </article>
           <article>
             <small>NEXT DIRECTION</small>
             <strong>{data.insights.direction}</strong>
           </article>
-          <p>
-            Live responses require an approved model provider and API key. No
-            generic or invented coaching is shown in the meantime.
-          </p>
+          <p>Deterministic profile mode is active. Every response is grounded in saved member data and ends with one concrete action.</p>
         </aside>
       </div>
     </div>
