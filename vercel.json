@@ -4,6 +4,11 @@
   "installCommand": "npm ci",
   "redirects": [
     {
+      "source": "/",
+      "destination": "https://able1self-journey.b-amechi.chatgpt.site/",
+      "permanent": false
+    },
+    {
       "source": "/:path*",
       "destination": "https://able1self-journey.b-amechi.chatgpt.site/:path*",
       "permanent": false
