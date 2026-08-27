@@ -835,7 +835,8 @@ small { font-size: max(13px, .78em); }
   .measurement-entry-card,
   .profile-measurements-editor { width: 100%; min-width: 0; }
   .profile-measurements-editor input,
-  .profile-measurements-editor textarea { width: 100%; min-width: 0; }
+  .profile-measurements-editor textarea,
+  .client-profile-stack .asset-upload input { width: 100%; min-width: 0; }
   .concierge-heading,
   .concierge-session-banner,
   .measurement-entry-card { align-items: stretch; flex-direction: column; }
