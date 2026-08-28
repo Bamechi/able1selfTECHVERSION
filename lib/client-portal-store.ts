@@ -21,10 +21,10 @@ const AMECHI_SEED: Record<string, string> = {
 
 async function memberForEmail(email: string) {
   const row = await getD1().prepare(
-    `SELECT p.id, p.email, p.display_name, a.role
+    `SELECT p.id, p.email, p.display_name, p.professional_title, p.created_at, a.role
      FROM member_profiles p JOIN member_accounts a ON lower(a.email) = lower(p.email)
      WHERE lower(p.email) = lower(?)`,
-  ).bind(email).first<{ id:number; email:string; display_name:string; role:string }>();
+  ).bind(email).first<{ id:number; email:string; display_name:string; professional_title:string; created_at:string; role:string }>();
   if (!row) throw new Error("Member profile not found.");
   return row;
 }
@@ -65,7 +65,7 @@ export async function getClientPortal(email: string, role: string, targetEmail?:
   const [client, measurementRows, assets, appointments, orders, members, auditLog, adminStats] = await Promise.all([
     db.prepare("SELECT * FROM client_profiles WHERE member_id = ?").bind(member.id).first(),
     db.prepare("SELECT measurement_key, value FROM measurements WHERE set_id = ?").bind(setId).all<{measurement_key:string;value:string}>(),
-    db.prepare("SELECT id, category, filename, content_type, size, caption, created_at FROM client_assets WHERE member_id = ? ORDER BY created_at DESC").bind(member.id).all(),
+    db.prepare("SELECT id, category, filename, content_type, size, caption, board_title, item_type, status, created_at FROM client_assets WHERE member_id = ? ORDER BY created_at DESC").bind(member.id).all(),
     db.prepare("SELECT * FROM appointments WHERE member_id = ? ORDER BY starts_at DESC").bind(member.id).all(),
     db.prepare("SELECT * FROM client_orders WHERE member_id = ? ORDER BY updated_at DESC").bind(member.id).all(),
     role === "admin"
@@ -130,9 +130,19 @@ export async function updateClientPortal(
       `UPDATE measurement_sets SET label=?, measured_at=?, measured_by=?, unit=?, notes=?, updated_at=? WHERE id=?`,
     ).bind(String(payload.label ?? "Current"), String(payload.measuredAt ?? ""), String(payload.measuredBy ?? ""), unit, String(payload.notes ?? ""), now, set.id).run();
   } else if (action === "save_client") {
+    const occupation = String(payload.occupation ?? member.professional_title ?? "").slice(0, 120);
     await db.prepare(
-      `UPDATE client_profiles SET phone=?, preferred_name=?, shipping_address=?, calendly_url=?, stylist_notes=?, updated_at=? WHERE member_id=?`,
-    ).bind(String(payload.phone ?? ""), String(payload.preferredName ?? ""), String(payload.shippingAddress ?? ""), String(payload.calendlyUrl ?? ""), String(payload.stylistNotes ?? ""), now, member.id).run();
+      "UPDATE member_profiles SET professional_title=?, updated_at=? WHERE id=?",
+    ).bind(occupation, now, member.id).run();
+    if (role === "admin") {
+      await db.prepare(
+        `UPDATE client_profiles SET phone=?, preferred_name=?, birthday=?, member_status=?, next_delivery=?, shipping_address=?, calendly_url=?, stylist_notes=?, updated_at=? WHERE member_id=?`,
+      ).bind(String(payload.phone ?? ""), String(payload.preferredName ?? ""), String(payload.birthday ?? ""), String(payload.memberStatus ?? "active"), String(payload.nextDelivery ?? ""), String(payload.shippingAddress ?? ""), String(payload.calendlyUrl ?? ""), String(payload.stylistNotes ?? ""), now, member.id).run();
+    } else {
+      await db.prepare(
+        `UPDATE client_profiles SET phone=?, preferred_name=?, birthday=?, shipping_address=?, updated_at=? WHERE member_id=?`,
+      ).bind(String(payload.phone ?? ""), String(payload.preferredName ?? ""), String(payload.birthday ?? ""), String(payload.shippingAddress ?? ""), now, member.id).run();
+    }
   } else if (action === "add_order" && role === "admin") {
     await db.prepare(
       `INSERT INTO client_orders (member_id, order_number, title, status, amount, tracking_url, notes, created_at, updated_at)
@@ -143,6 +153,15 @@ export async function updateClientPortal(
       `INSERT INTO appointments (member_id, title, starts_at, status, notes, created_at, updated_at)
        VALUES (?, ?, ?, 'scheduled', ?, ?, ?)`,
     ).bind(member.id, String(payload.title ?? "Appointment"), String(payload.startsAt ?? ""), String(payload.notes ?? ""), now, now).run();
+  } else if (action === "update_order" && role === "admin") {
+    const orderId = Number(payload.orderId ?? 0);
+    const order = await db.prepare(
+      "SELECT id FROM client_orders WHERE id=? AND member_id=?",
+    ).bind(orderId, member.id).first();
+    if (!order) throw new Error("Order not found.");
+    await db.prepare(
+      `UPDATE client_orders SET status=?, amount=?, tracking_url=?, notes=?, updated_at=? WHERE id=?`,
+    ).bind(String(payload.status ?? "planning"), String(payload.amount ?? ""), String(payload.trackingUrl ?? ""), String(payload.notes ?? ""), now, orderId).run();
   } else {
     throw new Error(role === "admin" ? "Unsupported portal action." : "Admin access required for that action.");
   }

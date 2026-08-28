@@ -321,8 +321,8 @@ test("accepts seeded accounts and rejects shared or invalid credentials", async 
   assert.equal((await outsider.json()).ok, false);
 });
 
-test("ships all revision batches and the private client ownership boundaries", async () => {
-  const [program, identity, astrology, lifePaths, signal, ledger, memberPage, portalStore, adminRoute, migration, planMigration, revisionCss, hosting] = await Promise.all([
+test("ships all revision batches and the standalone private client portal", async () => {
+  const [program, identity, astrology, lifePaths, signal, ledger, memberPage, portalStore, uploadRoute, adminRoute, migration, planMigration, conciergeMigration, revisionCss, hosting] = await Promise.all([
     readFile(new URL("../lib/program-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/identity-engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/astrology-engine.ts", import.meta.url), "utf8"),
@@ -331,9 +331,11 @@ test("ships all revision batches and the private client ownership boundaries", a
     readFile(new URL("../lib/brand-ledger.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/member/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/client-portal-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/client-portal/upload/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/client-portal/admin/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0004_member_portal_revision.sql", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0005_plan_accountability.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0006_client_concierge_app.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/revision.css", import.meta.url), "utf8"),
     readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
   ]);
@@ -350,7 +352,11 @@ test("ships all revision batches and the private client ownership boundaries", a
   assert.match(memberPage, /Find and verify location/);
   assert.match(memberPage, /Members Only/);
   assert.match(memberPage, /Admin console/);
-  assert.match(memberPage, /Measurements not completed/);
+  assert.match(memberPage, /Return to ABLE program/);
+  assert.match(memberPage, /Design board\./);
+  assert.match(memberPage, /Change profile photo/);
+  assert.match(memberPage, /update_order/);
+  assert.match(memberPage, /if \(view === "client"/);
   assert.match(memberPage, /add_plan_checkin/);
   assert.match(memberPage, /on_track/);
   assert.match(memberPage, /off_track/);
@@ -360,8 +366,13 @@ test("ships all revision batches and the private client ownership boundaries", a
   assert.match(migration, /role` = 'admin'[\s\S]*shawndaniels2015@gmail\.com|shawndaniels2015@gmail\.com[\s\S]*role` = 'admin'/);
   assert.match(planMigration, /CREATE TABLE `plan_checkins`/);
   assert.match(planMigration, /`explanation` text NOT NULL/);
+  assert.match(conciergeMigration, /ADD `board_title`/);
+  assert.match(conciergeMigration, /ADD `next_delivery`/);
+  assert.match(uploadRoute, /boardTitle/);
+  assert.match(portalStore, /update_order/);
   assert.match(revisionCss, /firm type floor/);
   assert.match(revisionCss, /portal-sidebar nav button \{ font-size: 15px !important/);
+  assert.match(revisionCss, /Standalone Members Only client app/);
   assert.match(hosting, /"r2": "MEMBER_UPLOADS"/);
 });
 

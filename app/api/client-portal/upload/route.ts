@@ -10,6 +10,9 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const file = form.get("file");
     const category = String(form.get("category") ?? "vision");
+    const boardTitle = String(form.get("boardTitle") ?? "My Vision").trim().slice(0, 100) || "My Vision";
+    const itemType = String(form.get("itemType") ?? "Inspiration").trim().slice(0, 60) || "Inspiration";
+    const status = String(form.get("status") ?? "idea").trim().slice(0, 30) || "idea";
     const targetEmail = session.role === "admin" ? String(form.get("member") ?? session.email) : session.email;
     if (!(file instanceof File) || !ALLOWED.has(file.type) || file.size > 10 * 1024 * 1024) {
       return Response.json({ ok:false, error:"Upload a JPG, PNG, WebP, or PDF up to 10 MB." }, { status:400 });
@@ -22,9 +25,9 @@ export async function POST(request: Request) {
     await getMemberUploads().put(objectKey, file.stream(), { httpMetadata:{ contentType:file.type }, customMetadata:{ filename:file.name } });
     const now = new Date().toISOString();
     await getD1().prepare(
-      `INSERT INTO client_assets (member_id, category, object_key, filename, content_type, size, caption, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(portal.member.id, category, objectKey, file.name.slice(0,180), file.type, file.size, String(form.get("caption") ?? "").slice(0,300), now).run();
+      `INSERT INTO client_assets (member_id, category, object_key, filename, content_type, size, caption, board_title, item_type, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(portal.member.id, category, objectKey, file.name.slice(0,180), file.type, file.size, String(form.get("caption") ?? "").slice(0,300), boardTitle, itemType, status, now).run();
     if (session.role === "admin") {
       await getD1().prepare("INSERT INTO admin_audit_log (actor_email, member_id, action, detail_json, created_at) VALUES (?, ?, 'upload_asset', ?, ?)")
         .bind(session.email, portal.member.id, JSON.stringify({ category, filename:file.name }), now).run();
