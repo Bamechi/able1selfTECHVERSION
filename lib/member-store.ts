@@ -14,6 +14,7 @@ import {
 } from "./program-data";
 import { displayNameFromEmail } from "./auth-accounts";
 import { getD1 } from "./runtime";
+import { isAnswered, parsePersonality } from "./personality";
 
 type ProfileRow = {
   id: number;
@@ -699,6 +700,12 @@ export async function updateMemberData(
     if (!programModule || !question || question.control === "derived" || !hasAnswer(payload.answer)) {
       throw new Error("A valid module question and answer are required.");
     }
+    if (question.control === 'personality' && !Object.keys(parsePersonality(payload.answer)).length) {
+      throw new Error('Valid personality responses are required.');
+    }
+    if (question.control === 'multi' && (!Array.isArray(payload.answer) || payload.answer.length > (question.max ?? 1) || payload.answer.some(item => !question.options?.includes(item)))) {
+      throw new Error('Choose from the available options.');
+    }
     const completedResult = await db
       .prepare(
         `SELECT module_key FROM module_progress
@@ -762,7 +769,7 @@ export async function updateMemberData(
       .all<ResponseRow>();
     const answers = rowsToAnswers(responseResult.results);
     const required = requiredQuestionKeys(programModule.key);
-    const answered = required.filter((key) => hasAnswer(answers[key])).length;
+    const answered = required.filter((key) => isAnswered(key, answers[key])).length;
     const progress = required.length
       ? Math.min(95, Math.round((answered / required.length) * 95))
       : 95;
@@ -806,7 +813,7 @@ export async function updateMemberData(
     }
     const answers = rowsToAnswers(responsesResult.results);
     const missing = requiredQuestionKeys(programModule.key).filter(
-      (key) => !hasAnswer(answers[key]),
+      (key) => !isAnswered(key, answers[key]),
     );
     if (missing.length) {
       throw new Error("Answer every required question before completing this module.");

@@ -37,6 +37,7 @@ import {
 } from "./life-paths";
 import { describeSignalTension, scoreBrandSignal } from "./brand-signal";
 import { scoreBrandLedger } from "./brand-ledger";
+import { personalityResult } from "./personality";
 
 /* ============================================================
    TYPES
@@ -1341,6 +1342,7 @@ export function assembleProfile(input: {
   fullBirthName?: string;
 }): AssembledProfile {
   const { answers, completedModules, fullBirthName } = input;
+  const personality = personalityResult(answers.a1_assessment);
   const done = new Set(completedModules);
   const analyzeComplete = ["A1", "A2", "A3"].every((k) => done.has(k));
   const brandComplete = ["B0", "B1", "B2", "B3", "B4"].every((k) => done.has(k));
@@ -1349,6 +1351,11 @@ export function assembleProfile(input: {
   const energy = resolveEnergyProfile(answers, fullBirthName);
   const computedAnswers: AnswerSet = {
     ...answers,
+    ...(personality ? {
+      a1_social_energy: 1 + Math.round(personality.axes[0].first / 25),
+      a1_plan_spont: 1 + Math.round(personality.axes[3].second / 25),
+      a1_decide: personality.axes[2].letter === 'T' ? 'Logic and analysis' : 'Values and how people are affected',
+    } : {}),
     a2_derived_element: energy.element
       ? `${energy.element} — calculated from your Sun sign`
       : null,
@@ -1372,7 +1379,10 @@ export function assembleProfile(input: {
       stage: "A",
       title: "Personality Snapshot",
       build: () => ({
-        mbti: answers["a1_mbti"] ?? null,
+        mbti: personality?.type ?? answers["a1_mbti"] ?? null,
+        personalityAssessment: personality,
+        pathway: answers.a1_pathway ?? null,
+        direction: answers.a1_direction ?? null,
         strengths: asArray(answers["a1_strengths"]),
         decisionStyle: answers["a1_decide"] ?? null,
         workRhythm: answers["a1_pace"] ?? null,
@@ -1393,6 +1403,10 @@ export function assembleProfile(input: {
       stage: "A",
       title: "Self-Discovery Profile",
       build: () => ({
+        self: answers.a3_self ?? null,
+        becoming: answers.a3_becoming ?? null,
+        gifts: asArray(answers.a3_gifts),
+        contribution: answers.a3_contribution ?? null,
         values: asArray(answers["a3_values"]),
         lifeTheme: answers["a3_theme"] ?? null,
         coreDriver: answers["a3_driver"] ?? null,
@@ -1427,7 +1441,7 @@ export function assembleProfile(input: {
       key: "image_plan",
       moduleKey: "B2",
       stage: "B",
-      title: "Image Plan",
+      title: "Business & Brand Foundations",
       build: () => ({
         palette,
         silhouette: answers["b2_silhouette"] ?? null,
@@ -1435,6 +1449,9 @@ export function assembleProfile(input: {
         buyingOrder: asArray(answers["b2_invest"]),
         budget: answers["b2_budget"] ?? null,
         digitalPresence: answers["b2_presence"] ?? null,
+        businessFoundations: asArray(answers.b2_business_setup),
+        digitalAssets: asArray(answers.b2_digital_assets),
+        support: asArray(answers.b2_support),
       }),
     },
     {
@@ -1462,6 +1479,8 @@ export function assembleProfile(input: {
         networkingStyle: answers["l1_net_style"] ?? null,
         partnerPreference: answers["l1_partner"] ?? null,
         doorsNeeded: asArray(answers["l1_doors"]),
+        secondaryAudience: answers.l1_secondary ?? null,
+        channels: asArray(answers.l1_channels),
       }),
     },
     {
@@ -1474,6 +1493,12 @@ export function assembleProfile(input: {
         model: answers["l2_model"] ?? null,
         twelveMonthGoal: answers["l2_goal"] ?? null,
         statedBlocker: answers["l2_blocker"] ?? null,
+        problem: answers.l2_problem ?? null,
+        solution: answers.l2_solution ?? null,
+        audience: answers.l2_past_self ?? null,
+        offer: answers.l2_offer ?? null,
+        proof: answers.l2_proof ?? null,
+        pricing: answers.l2_price ?? null,
       }),
     },
     {
@@ -1487,6 +1512,11 @@ export function assembleProfile(input: {
         ecosystemIntent: asArray(answers["l3_ecosystem"]),
         referralPath: answers["l3_referral"] ?? null,
         futureTestimonial: answers["l3_endorsement"] ?? null,
+        story: answers.l3_story ?? null,
+        profileLine: answers.l3_profile_line ?? null,
+        nextAction: answers.l3_action ?? null,
+        actionLink: answers.l3_action_link ?? null,
+        rhythm: answers.l3_rhythm ?? null,
       }),
     },
     {
@@ -1500,6 +1530,7 @@ export function assembleProfile(input: {
         activationMove: answers["e1_activation"] ?? null,
         visibilityReadiness: answers["e1_visibility"] ?? null,
         finishLine: answers["e1_success"] ?? null,
+        firstAction: answers.e1_next_action ?? null,
       }),
     },
     {
@@ -1514,6 +1545,7 @@ export function assembleProfile(input: {
         weeklyHabits: asArray(answers["e2_weekly"]),
         derailer: answers["e2_derailer"] ?? null,
         unstickPlan: answers["e2_if_stuck"] ?? null,
+        alignment: answers.e2_alignment ?? null,
       }),
     },
     {
@@ -1526,6 +1558,7 @@ export function assembleProfile(input: {
         momentumSource: answers["e3_momentum"] ?? null,
         ongoingSupport: asArray(answers["e3_support"]),
         commitment: answers["e3_commitment"] ?? null,
+        partner: answers.e3_partner ?? null,
       }),
     },
   ];

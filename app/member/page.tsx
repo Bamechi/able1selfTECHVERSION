@@ -6,7 +6,6 @@ import {
   type ReactNode,
   type CSSProperties,
   type FormEvent,
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -27,6 +26,9 @@ import {
 } from "../../lib/program-data";
 import { scoreBrandLedger } from "../../lib/brand-ledger";
 import { scoreBrandSignal } from "../../lib/brand-signal";
+import { isAnswered, personalityResult } from "../../lib/personality";
+import { PersonalityAssessment, PersonalitySummary } from './personality-assessment';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, House, LogOut, Menu, MessageCircle, MessagesSquare, Printer, Settings2, Sparkles, Target, UserRound, X } from 'lucide-react';
 
 type PortalView =
   | "overview"
@@ -34,8 +36,6 @@ type PortalView =
   | "profile"
   | "plan"
   | "guide"
-  | "client"
-  | "admin"
   | "community"
   | "messages"
   | "settings";
@@ -158,17 +158,16 @@ const navigation: Array<{
   { id: "profile", label: "My profile", symbol: "◎" },
   { id: "plan", label: "90-day plan", symbol: "↗" },
   { id: "guide", label: "AI Guide", symbol: "◇" },
-  { id: "client", label: "Members Only", symbol: "◆" },
   { id: "community", label: "The Room", symbol: "◌" },
   { id: "messages", label: "Messages", symbol: "↗" },
   { id: "settings", label: "Settings", symbol: "⌘" },
 ];
 
-const adminNavigation: { id: PortalView; label: string; symbol: string } = {
-  id: "admin",
-  label: "Admin console",
-  symbol: "▦",
-};
+const navigationIcons = { overview: House, program: BookOpen, profile: UserRound, plan: Target, guide: Sparkles, community: MessagesSquare, messages: MessageCircle, settings: Settings2 };
+
+function needsReview(module: ProgramModule, data: MemberData) {
+  return data.progress.some(item => item.module_key === module.key && item.status === 'complete') && module.questions.some(question => question.required && !isAnswered(question.key, data.responses.find(response => response.question_key === question.key)?.answer));
+}
 
 const stageDetails = [
   {
@@ -347,20 +346,20 @@ function AnswerField({
         {question.options?.map((option) => {
           const active = selected.includes(option);
           return (
-            <button
+            <label
               className={active ? "selected" : ""}
               key={option}
-              type="button"
-              onClick={() => {
-                if (active) onChange(selected.filter((item) => item !== option));
-                else if (selected.length < (question.max ?? 1)) {
-                  onChange([...selected, option]);
-                }
-              }}
             >
-              <span>{active ? "✓" : "+"}</span>
+              <input type="checkbox" checked={active} onChange={() => {
+                const exclusive = ['None yet', 'Not sure', 'No support needed right now'];
+                if (active) onChange(selected.filter((item) => item !== option));
+                else if (exclusive.includes(option)) onChange([option]);
+                else if (selected.length < (question.max ?? 1)) {
+                  onChange([...selected.filter(item => !exclusive.includes(item)), option]);
+                }
+              }} />
               {option}
-            </button>
+            </label>
           );
         })}
         <p className="selection-count">
@@ -434,11 +433,12 @@ function AnswerField({
           {question.options?.map((option) => (
             <button
               className={selected === option ? "selected" : ""}
+              aria-pressed={selected === option}
               key={option}
               type="button"
               onClick={() => onChange(option)}
             >
-              <span>{selected === option ? "●" : "○"}</span>
+              <span aria-hidden="true">{selected === option ? "●" : "○"}</span>
               {option}
             </button>
           ))}
@@ -485,6 +485,7 @@ function AnswerField({
     return (
       <input
         className="assessment-input"
+        aria-label={question.prompt}
         value={typeof value === "string" ? value : ""}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Write your answer here."
@@ -495,10 +496,11 @@ function AnswerField({
   return (
     <textarea
       className="assessment-textarea"
+      aria-label={question.prompt}
       value={typeof value === "string" ? value : ""}
       onChange={(event) => onChange(event.target.value)}
       placeholder="Write what is true for you—not what sounds impressive."
-      rows={7}
+      rows={4}
     />
   );
 }
@@ -521,6 +523,8 @@ function hasAnswer(value: AnswerValue) {
 }
 
 function formatAnswer(value: AnswerValue) {
+  const personality = personalityResult(value);
+  if (personality) return `${personality.type} · ${personality.description}`;
   if (Array.isArray(value)) return value.join(" · ");
   if (value && typeof value === "object") {
     return Object.entries(value)
@@ -555,7 +559,7 @@ function ModulePlayer({
       question.required &&
       !data.responses.some(
         (response) =>
-          response.question_key === question.key && hasAnswer(response.answer),
+          response.question_key === question.key && isAnswered(question.key, response.answer),
       ),
   );
   const [questionIndex, setQuestionIndex] = useState(
@@ -566,13 +570,22 @@ function ModulePlayer({
     data.responses.find((response) => response.question_key === question.key)
       ?.answer ?? null;
   const [answer, setAnswer] = useState<AnswerValue>(savedAnswer);
+  const [localError, setLocalError] = useState('');
+  const [ledgerExpanded, setLedgerExpanded] = useState(false);
+  const playerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    playerRef.current?.focus();
+    return () => previous?.focus();
+  }, []);
+  useEffect(() => { playerRef.current?.querySelector('main')?.scrollTo({ top: 0 }); }, [questionIndex]);
   const requiredQuestions = programModule.questions.filter(
     (item) => item.required,
   );
   const answeredRequired = requiredQuestions.filter((item) =>
     data.responses.some(
       (response) =>
-        response.question_key === item.key && hasAnswer(response.answer),
+        response.question_key === item.key && isAnswered(item.key, response.answer),
     ),
   ).length;
   const answers = Object.fromEntries(
@@ -696,6 +709,8 @@ function ModulePlayer({
   }
 
   async function saveAndMove(direction: -1 | 1) {
+    setLocalError('');
+    try {
     if (question.control !== "derived" && hasAnswer(answer)) {
       await onSave(programModule.key, question.key, answer);
     }
@@ -710,30 +725,46 @@ function ModulePlayer({
       )?.answer ?? null,
     );
     setQuestionIndex(nextIndex);
+    } catch { setLocalError('Could not save. Your answer is still here. Please try again.'); }
+  }
+
+  async function saveAndClose() {
+    setLocalError('');
+    try {
+      if (question.control !== 'derived' && hasAnswer(answer)) await onSave(programModule.key, question.key, answer);
+      onClose();
+    } catch { setLocalError('Could not save. Keep this window open and try again.'); }
   }
 
   const currentCompletesRequirement =
-    Boolean(question.required) && !hasAnswer(savedAnswer) && hasAnswer(answer);
+    Boolean(question.required) && !isAnswered(question.key, savedAnswer) && isAnswered(question.key, answer);
   const allRequiredAnswered =
     answeredRequired + (currentCompletesRequirement ? 1 : 0) >=
     requiredQuestions.length;
 
   return (
-    <div className="module-player-overlay" role="dialog" aria-modal="true">
+    <div className="module-player-overlay" role="dialog" aria-modal="true" aria-label={programModule.title} onKeyDown={event => {
+      if (event.key === 'Escape' && !saving) { event.preventDefault(); void saveAndClose(); }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(playerRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href]') ?? []).filter(element => element.getClientRects().length);
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === playerRef.current)) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }}>
       <button
         className="module-player-backdrop"
         type="button"
-        onClick={onClose}
+        onClick={() => { if (!saving) void saveAndClose(); }}
         aria-label="Close module"
       />
-      <section className="module-player">
+      <section className="module-player" ref={playerRef} tabIndex={-1}>
         <header>
           <div className="module-player-brand">
             <img src="/able1self-logo.png" alt="" />
-            <span>ABLE / MEMBER OS</span>
+            <span>ABLE1SELF</span>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close module">
-            ×
+          <button type="button" disabled={saving} onClick={() => void saveAndClose()} aria-label="Save and close module">
+            <X size={20} />
           </button>
         </header>
 
@@ -761,20 +792,30 @@ function ModulePlayer({
           </div>
         </div>
 
-        <main>
+        {programModule.key === 'B4' && !ledgerExpanded ? <main className="ledger-review">
+          <span className="assessment-number">BRAND / REVIEW</span>
+          <h2>Your foundations.</h2>
+          {['b2_business_setup', 'b2_digital_assets', 'b2_support'].map(key => <section key={key}>
+            <h3>{key === 'b2_business_setup' ? 'Business' : key === 'b2_digital_assets' ? 'Brand assets' : 'Support priorities'}</h3>
+            <p>{formatAnswer(answers[key]) || 'Not added yet'}</p>
+          </section>)}
+          <button className="module-secondary" onClick={() => setLedgerExpanded(true)}>Open detailed review (optional)</button>
+        </main> : <main>
           <span className="assessment-number">
             QUESTION {String(questionIndex + 1).padStart(2, "0")} / {" "}
             {String(programModule.questions.length).padStart(2, "0")}
           </span>
-          <h2>{question.prompt}</h2>
-          <p>{question.guidance}</p>
-          <AnswerField
+          <h2>{question.key === 'a1_direction' && answers.a1_pathway === 'I am starting something new' ? 'What do you want to build, and who would it help?' : question.prompt}</h2>
+          {question.guidance && <p>{question.guidance}</p>}
+          {question.control === 'personality' ? <PersonalityAssessment value={answer} onChange={setAnswer} saving={saving} onSave={value => onSave(programModule.key, question.key, value)} /> : <AnswerField
             question={question}
             value={answer}
             onChange={setAnswer}
             derived={derivedContent()}
-          />
-        </main>
+          />}
+        </main>}
+
+        {localError && <p className="module-save-error" role="alert">{localError}</p>}
 
         <footer>
           <button
@@ -783,23 +824,21 @@ function ModulePlayer({
             disabled={saving || questionIndex === 0}
             onClick={() => saveAndMove(-1)}
           >
-            ← Previous
+            <ArrowLeft size={18} /> Previous
           </button>
           <span>
             {saving ? "Saving securely…" : "Your work is saved as you move."}
           </span>
-          {questionIndex < programModule.questions.length - 1 ? (
+          {programModule.key === 'B4' && !ledgerExpanded ? <button className="module-primary" disabled={saving} onClick={async () => { try { await onComplete(programModule.key); } catch { setLocalError('Could not complete this review. Please try again.'); } }}>Complete review <ArrowRight size={18} /></button> : questionIndex < programModule.questions.length - 1 ? (
             <button
               className="module-primary"
               type="button"
               disabled={
-                saving || (Boolean(question.required) && !hasAnswer(answer))
+                saving || (Boolean(question.required) && !isAnswered(question.key, answer))
               }
               onClick={() => saveAndMove(1)}
             >
-              {question.control === "derived" || !hasAnswer(answer)
-                ? "Continue →"
-                : "Save & continue →"}
+              Continue <ArrowRight size={18} />
             </button>
           ) : (
             <button
@@ -807,10 +846,12 @@ function ModulePlayer({
               type="button"
               disabled={saving || !allRequiredAnswered}
               onClick={async () => {
+                try {
                 if (question.control !== "derived" && hasAnswer(answer)) {
                   await onSave(programModule.key, question.key, answer);
                 }
                 await onComplete(programModule.key);
+                } catch { setLocalError('Could not save this module. Your answer is still here. Please try again.'); }
               }}
             >
               Complete module ✓
@@ -1007,37 +1048,21 @@ export default function MemberPage() {
   }
 
   function openProgramModule(programModule: ProgramModule) {
-    const firstInStage = programModules.find(
-      (item) => item.stage === programModule.stage,
-    );
-    const stageStarted = data?.progress.some(
-      (item) => item.stage === programModule.stage && item.status !== "not_started",
-    );
-    if (firstInStage?.key === programModule.key && !stageStarted) {
-      setStagePrelude(programModule);
-    } else {
-      setActiveModule(programModule);
-    }
+    setActiveModule(programModule);
   }
 
   const currentModule = useMemo(
     () =>
+      (data ? programModules.find(module => needsReview(module, data)) : undefined) ??
       programModules.find(
         (module) => module.key === data?.profile.currentModule,
       ) ?? programModules[0],
-    [data?.profile.currentModule],
+    [data],
   );
   const unread =
     data?.notifications.filter((notification) => !notification.is_read).length ??
     0;
-  const visibleNavigation = useMemo(() => {
-    if (data?.role !== "admin") return navigation;
-    return [
-      ...navigation.slice(0, -1),
-      adminNavigation,
-      navigation[navigation.length - 1],
-    ];
-  }, [data?.role]);
+  const visibleNavigation = navigation;
 
   if (loading) {
     return (
@@ -1062,16 +1087,6 @@ export default function MemberPage() {
     );
   }
 
-  if (view === "client" || (view === "admin" && data.role === "admin")) {
-    return (
-      <ClientPortal
-        key={view === "admin" ? "admin-client-portal" : "member-client-portal"}
-        adminMode={view === "admin"}
-        onExit={() => setView("overview")}
-      />
-    );
-  }
-
   return (
     <main className="member-portal live-member-portal">
       <aside className={`portal-sidebar ${menuOpen ? "open" : ""}`}>
@@ -1090,7 +1105,7 @@ export default function MemberPage() {
                 setMenuOpen(false);
               }}
             >
-              <span>{item.symbol}</span>
+              <span>{(() => { const Icon = navigationIcons[item.id as keyof typeof navigationIcons]; return Icon ? <Icon size={18} /> : null; })()}</span>
               {item.label}
               <i />
             </button>
@@ -1103,7 +1118,7 @@ export default function MemberPage() {
             <small>{data.profile.email}</small>
           </p>
           <button type="button" onClick={logout} aria-label="Sign out">
-            ↗
+            <LogOut size={18} />
           </button>
         </div>
       </aside>
@@ -1116,7 +1131,7 @@ export default function MemberPage() {
             onClick={() => setMenuOpen((value) => !value)}
             aria-label="Toggle portal navigation"
           >
-            ☰
+            <Menu size={20} />
           </button>
           <div>
             <span className="portal-live-dot" />
@@ -1139,7 +1154,7 @@ export default function MemberPage() {
               }}
               aria-label="Notifications"
             >
-              ◌
+              <Bell size={18} />
               {unread > 0 && <i>{unread}</i>}
             </button>
           </div>
@@ -1173,7 +1188,7 @@ export default function MemberPage() {
         )}
 
         <div className="portal-content">
-          {data.profile.overallProgress < 100 && (
+          {view !== 'overview' && view !== 'profile' && data.profile.overallProgress < 100 && (
             <button
               className="portal-progress-reminder"
               type="button"
@@ -1187,8 +1202,7 @@ export default function MemberPage() {
                     : `Keep going with ${currentModule.title}.`}
                 </strong>
                 <p>
-                  Your work is saved. Continue from your next unanswered question
-                  whenever you return.
+                  Your next step is ready.
                 </p>
               </div>
               <em>
@@ -1253,7 +1267,7 @@ export default function MemberPage() {
             const updated = await mutate({ action: "complete_module", moduleKey });
             if (
               updated?.identity &&
-              (moduleKey === "A3" || moduleKey === "B3")
+              (moduleKey === "A3" || moduleKey === "B4")
             ) {
               setIdentityReveal({
                 mode: moduleKey === "A3" ? "provisional" : "locked",
@@ -1301,6 +1315,8 @@ function Overview({
   onNavigate: (view: PortalView) => void;
 }) {
   const openPlanItems = data.plan.filter((item) => item.status !== "complete");
+  const reviewCount = programModules.filter(module => needsReview(module, data)).length;
+  const finished = data.profile.completedModules === programModules.length && reviewCount === 0;
   return (
     <div className="portal-view-stack">
       <div className="portal-welcome">
@@ -1315,12 +1331,10 @@ function Overview({
               .toUpperCase()}
           </span>
           <h1>
-            Welcome back,
-            <span>{data.profile.displayName}.</span>
+            Welcome back, {data.profile.displayName}.
           </h1>
           <p>
-            Your profile is {data.profile.overallProgress}% complete. Every
-            completed module makes your personalized profile more useful.
+            {reviewCount ? `${reviewCount} ${reviewCount === 1 ? 'module has' : 'modules have'} new questions to review.` : `${data.profile.completedModules} of ${programModules.length} modules complete.`}
           </p>
           {data.identity && (
             <button
@@ -1350,6 +1364,16 @@ function Overview({
         </div>
       </div>
 
+      <nav className="able-stage-nav" aria-label="ABLE stages">
+        {stages.map(stage => {
+          const modules = programModules.filter(module => module.stage === stage.key);
+          const target = modules.find(module => needsReview(module, data) || data.progress.find(item => item.module_key === module.key)?.status !== 'complete') ?? modules[0];
+          const unlocked = data.unlocks[target.key] || data.progress.some(item => item.module_key === target.key && item.status === 'complete');
+          const done = modules.filter(module => data.progress.some(item => item.module_key === module.key && item.status === 'complete') && !needsReview(module, data)).length;
+          return <button key={stage.key} disabled={!unlocked} onClick={() => onOpenModule(target)}><strong>{stage.key}</strong><span>{stage.name}<small>{done}/{modules.length} complete</small></span></button>;
+        })}
+      </nav>
+
       <div className="portal-stat-grid">
         <article>
           <span>Modules complete</span>
@@ -1376,8 +1400,7 @@ function Overview({
       <div className="live-overview-grid">
         <article className="continue-card">
           <header>
-            <span>CONTINUE YOUR PROGRAM</span>
-            <i>LIVE</i>
+            <span>{finished ? 'YOUR ABLE PROFILE' : reviewCount ? 'REVIEW YOUR UPDATED PROGRAM' : 'CONTINUE YOUR PROGRAM'}</span>
           </header>
           <div className="continue-content">
             <div className="continue-letter" aria-hidden="true">
@@ -1387,10 +1410,10 @@ function Overview({
               <span>
                 {currentModule.key} / {currentModule.stageName}
               </span>
-              <h2>{currentModule.title}</h2>
-              <p>{currentModule.description}</p>
-              <button type="button" onClick={() => onOpenModule(currentModule)}>
-                Open assessment →
+              <h2>{finished ? 'Your profile is ready.' : currentModule.title}</h2>
+              {!finished && <p>{currentModule.description}</p>}
+              <button type="button" onClick={() => finished ? onNavigate('profile') : onOpenModule(currentModule)}>
+                {finished ? 'View profile' : reviewCount ? 'Review' : 'Continue'} <ArrowRight size={18} />
               </button>
             </div>
           </div>
@@ -1442,9 +1465,7 @@ function Program({
         <div>
           <span className="portal-eyebrow">THE ABLE PROGRAM</span>
           <h1>Your complete path.</h1>
-          <p>
-            Fourteen focused modules. Your progress and every response are saved.
-          </p>
+          <p>Analyze. Brand. Leverage. Embark.</p>
         </div>
         <strong className="program-total">
           {data.profile.overallProgress}% <span>OVERALL</span>
@@ -1500,7 +1521,7 @@ function Program({
                         <small>
                           {!unlocked
                             ? "Complete the previous module"
-                            : item?.status === "complete"
+                            : needsReview(module, data) ? 'New questions to review' : item?.status === "complete"
                             ? "Complete"
                             : item?.status === "in_progress"
                               ? `${item.progress}% saved`
@@ -1578,15 +1599,27 @@ function downloadIdentityCard(identity: NonNullable<MemberData["identity"]>, dat
 }
 
 function Profile({ data }: { data: MemberData }) {
+  const answers = Object.fromEntries(data.responses.map(response => [response.question_key, response.answer]));
   return (
-    <div className="portal-view-stack">
+    <div className="portal-view-stack profile-page">
       <div className="portal-page-heading">
         <span className="portal-eyebrow">PERSONALIZED IDENTITY PROFILE</span>
-        <h1>Your operating system.</h1>
-        <p>
-          This living profile is generated from your real program responses.
-        </p>
+        <h1>Your profile.</h1>
+        <button className="profile-print" type="button" onClick={() => window.print()}><Printer size={18} /> Print / save PDF</button>
       </div>
+      <article className="profile-document">
+        <header><img src="/able1self-logo.png" alt="Able1Self" /><div><span>ABLE1SELF / PERSONAL PROFILE</span><h2>{data.profile.displayName}</h2><p>{data.profile.professionalTitle}</p><p>{data.profile.bio}</p></div></header>
+        <PersonalitySummary value={answers.a1_assessment} />
+        {stages.map(stage => <section className="profile-stage" key={stage.key}>
+          <h2><span>{stage.key}</span>{stage.name}</h2>
+          {stage.key === 'A' && data.derived?.energy && <div className="profile-energy">{['sunSign', 'moonSign', 'risingSign', 'lifePath'].map(key => data.derived!.energy[key] ? <p key={key}><strong>{key.replace(/([A-Z])/g, ' $1')}</strong> {String(data.derived!.energy[key])}</p> : null)}</div>}
+          {stage.key === 'B' && data.derived?.brandStatement && <blockquote>{data.derived.brandStatement}</blockquote>}
+          {programModules.filter(module => module.stage === stage.key && module.key !== 'B4').flatMap(module => module.questions.filter(q => q.control !== 'personality' && q.control !== 'derived' && hasAnswer(answers[q.key])).map(q => <div className="profile-entry" key={q.key}><h3>{q.key === 'a1_direction' && answers.a1_pathway === 'I am starting something new' ? 'What do you want to build, and who would it help?' : q.prompt}</h3><p>{formatAnswer(answers[q.key])}</p></div>))}
+          {!data.responses.some(response => response.module_key.startsWith(stage.key)) && <p className="profile-pending">Not started yet.</p>}
+          {stage.key === 'E' && data.plan.map(item => <div className="profile-entry" key={item.id}><h3>{item.title}</h3><p>{item.why}</p><p>{item.success_metric}{item.due_date ? ` · Due ${item.due_date}` : ''} · {item.status.replaceAll('_', ' ')}</p></div>)}
+        </section>)}
+      </article>
+      <details className="profile-history"><summary>Identity insights and saved history</summary>
       {data.identity ? (
         <section className="core-identity-card">
           <header>
@@ -1669,7 +1702,7 @@ function Profile({ data }: { data: MemberData }) {
         <header>
           <div>
             <span>YOUR PERSONALIZED PROFILE</span>
-            <h2>Twelve connected deliverables.</h2>
+            <h2>Your saved deliverables.</h2>
           </div>
           <strong>{data.profile.completedModules}/{programModules.length}</strong>
         </header>
@@ -1686,7 +1719,7 @@ function Profile({ data }: { data: MemberData }) {
               </summary>
               {!section.locked && (
                 <div className="deliverable-content">
-                  {Object.entries(section.content).map(([key, value]) => (
+                  {Object.entries(section.content).filter(([key, value]) => value != null && key !== 'personalityAssessment').map(([key, value]) => (
                     <article key={key}>
                       <span>{key.replaceAll(/([A-Z])|_/g, " $1").trim()}</span>
                       <p>
@@ -1724,7 +1757,7 @@ function Profile({ data }: { data: MemberData }) {
                 <article key={response.question_key}>
                   <span>{response.module_key}</span>
                   <div>
-                    <strong>{question?.prompt}</strong>
+                    <strong>{question?.prompt ?? 'Earlier reflection'}</strong>
                     <p>{formatAnswer(response.answer)}</p>
                   </div>
                 </article>
@@ -1736,6 +1769,7 @@ function Profile({ data }: { data: MemberData }) {
           </p>
         )}
       </section>
+      </details>
     </div>
   );
 }
@@ -2072,895 +2106,6 @@ function Messages({
   );
 }
 
-type ConciergeTab =
-  | "dashboard"
-  | "measurements"
-  | "design"
-  | "orders"
-  | "profile"
-  | "settings"
-  | "admin";
-
-type ClientPortalData = {
-  role: string;
-  member: {
-    email: string;
-    display_name: string;
-    professional_title: string;
-    created_at: string;
-    role: string;
-  };
-  members: Array<{ email: string; display_name: string; role: string }>;
-  client: Record<string, unknown>;
-  measurementSet: Record<string, unknown>;
-  measurements: Record<string, string>;
-  measurementFields: Array<[string, string]>;
-  assets: Array<{
-    id: number;
-    category: string;
-    filename: string;
-    content_type: string;
-    caption: string;
-    board_title: string;
-    item_type: string;
-    status: string;
-    created_at: string;
-  }>;
-  appointments: Array<{
-    id: number;
-    title: string;
-    starts_at: string;
-    status: string;
-    notes: string;
-  }>;
-  orders: Array<{
-    id: number;
-    order_number: string;
-    title: string;
-    status: string;
-    amount: string;
-    tracking_url: string;
-    notes: string;
-  }>;
-  auditLog: Array<{
-    id: number;
-    actor_email: string;
-    action: string;
-    created_at: string;
-    member_email: string;
-    display_name: string;
-  }>;
-  adminStats: {
-    active_members: number;
-    orders: number;
-    appointments: number;
-    assets: number;
-  } | null;
-};
-
-const conciergeNavigation: Array<{
-  id: ConciergeTab;
-  label: string;
-  symbol: string;
-}> = [
-  { id: "dashboard", label: "Dashboard", symbol: "⌂" },
-  { id: "measurements", label: "Measurements", symbol: "⌗" },
-  { id: "design", label: "Design Board", symbol: "▦" },
-  { id: "orders", label: "Orders", symbol: "□" },
-  { id: "profile", label: "Profile", symbol: "○" },
-  { id: "settings", label: "Settings", symbol: "⚙" },
-];
-
-const orderStatuses = [
-  "planning",
-  "approved",
-  "invoiced",
-  "in production",
-  "fitting",
-  "shipped",
-  "delivered",
-];
-
-function conciergeDate(value: unknown, fallback = "Not scheduled") {
-  const raw = String(value ?? "");
-  if (!raw) return fallback;
-  const date = new Date(raw.length === 10 ? `${raw}T12:00:00` : raw);
-  if (Number.isNaN(date.getTime())) return fallback;
-  return date.toLocaleDateString("en", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function ClientPortal({
-  adminMode = false,
-  onExit,
-}: {
-  adminMode?: boolean;
-  onExit: () => void;
-}) {
-  const [portal, setPortal] = useState<ClientPortalData | null>(null);
-  const [tab, setTab] = useState<ConciergeTab>(adminMode ? "admin" : "dashboard");
-  const [target, setTarget] = useState("");
-  const [measurements, setMeasurements] = useState<Record<string, string>>({});
-  const [measurementMeta, setMeasurementMeta] = useState({
-    label: "Current",
-    measuredAt: "",
-    measuredBy: "",
-    notes: "",
-  });
-  const [unit, setUnit] = useState("in");
-  const [selectedBoard, setSelectedBoard] = useState("");
-  const [navOpen, setNavOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [today] = useState(() => Date.now());
-
-  const load = useCallback(async (selected?: string) => {
-    setBusy(true);
-    setNotice("");
-    try {
-      const suffix = selected ? `?member=${encodeURIComponent(selected)}` : "";
-      const endpoint = adminMode ? "/api/client-portal/admin" : "/api/client-portal";
-      const response = await fetch(`${endpoint}${suffix}`, { cache: "no-store" });
-      const result = (await response.json()) as {
-        data?: ClientPortalData;
-        error?: string;
-      };
-      if (!response.ok || !result.data) {
-        throw new Error(result.error ?? "Unable to load Members Only.");
-      }
-      setPortal(result.data);
-      setTarget(result.data.member.email);
-      setMeasurements(result.data.measurements);
-      setMeasurementMeta({
-        label: String(result.data.measurementSet.label ?? "Current"),
-        measuredAt: String(result.data.measurementSet.measured_at ?? ""),
-        measuredBy: String(result.data.measurementSet.measured_by ?? ""),
-        notes: String(result.data.measurementSet.notes ?? ""),
-      });
-      setUnit("in");
-      setSelectedBoard("");
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Unable to load Members Only.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }, [adminMode]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(timer);
-  }, [load]);
-
-  async function patchPortal(payload: Record<string, unknown>) {
-    setBusy(true);
-    setNotice("");
-    try {
-      const endpoint = adminMode ? "/api/client-portal/admin" : "/api/client-portal";
-      const response = await fetch(endpoint, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...payload, targetEmail: target }),
-      });
-      const result = (await response.json()) as {
-        data?: ClientPortalData;
-        error?: string;
-      };
-      if (!response.ok || !result.data) {
-        throw new Error(result.error ?? "Unable to save.");
-      }
-      setPortal(result.data);
-      setMeasurements(result.data.measurements);
-      setNotice("Saved successfully.");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Unable to save.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function upload(event: FormEvent<HTMLFormElement>, category: string) {
-    event.preventDefault();
-    setBusy(true);
-    setNotice("");
-    const form = new FormData(event.currentTarget);
-    form.set("category", category);
-    form.set("member", target);
-    try {
-      const response = await fetch("/api/client-portal/upload", {
-        method: "POST",
-        body: form,
-      });
-      const result = (await response.json()) as {
-        data?: ClientPortalData;
-        error?: string;
-      };
-      if (!response.ok || !result.data) {
-        throw new Error(result.error ?? "Upload failed.");
-      }
-      setPortal(result.data);
-      setSelectedBoard(String(form.get("boardTitle") ?? ""));
-      setNotice(category === "profile" ? "Profile photo updated." : "Board item uploaded.");
-      event.currentTarget.reset();
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Upload failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function signOut() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.assign("/");
-  }
-
-  if (!portal) {
-    return (
-      <main className="concierge-app concierge-loading">
-        <img src="/able1self-logo.png" alt="" />
-        <strong>{busy ? "Opening your private client portal" : "Portal unavailable"}</strong>
-        <p>{notice}</p>
-      </main>
-    );
-  }
-
-  const displayed = (value: string) =>
-    unit === "cm" && value ? (Number(value) * 2.54).toFixed(1) : value;
-  const stored = (value: string) =>
-    unit === "cm" && value
-      ? (Number(value) / 2.54).toFixed(2).replace(/0+$/, "").replace(/\.$/, "")
-      : value;
-  const completedMeasurements = Object.values(measurements).filter(Boolean).length;
-  const measurementPercent = Math.round(
-    (completedMeasurements / portal.measurementFields.length) * 100,
-  );
-  const profileImage = portal.assets.find(
-    (asset) => asset.category === "profile" && asset.content_type.startsWith("image/"),
-  );
-  const designAssets = portal.assets.filter((asset) => asset.category === "vision");
-  const boardNames = Array.from(
-    new Set(designAssets.map((asset) => asset.board_title || "My Vision")),
-  );
-  const selectedBoardName = boardNames.includes(selectedBoard)
-    ? selectedBoard
-    : boardNames[0] ?? "My Vision";
-  const boardItems = designAssets.filter(
-    (asset) => (asset.board_title || "My Vision") === selectedBoardName,
-  );
-  const nextSession = portal.appointments
-    .filter((appointment) => new Date(appointment.starts_at).getTime() >= today)
-    .sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? portal.appointments[0];
-  const activeOrders = portal.orders.filter((order) => order.status !== "delivered");
-  const activeOrder = activeOrders[0] ?? portal.orders[0];
-  const orderStages = ["Planning", "Design", "Production", "Fitting", "Delivery"];
-  const normalizedStatus = activeOrder?.status.toLowerCase() ?? "planning";
-  const orderStage = normalizedStatus === "delivered" || normalizedStatus === "shipped"
-    ? 4
-    : normalizedStatus === "fitting"
-      ? 3
-      : normalizedStatus === "in production"
-        ? 2
-        : normalizedStatus === "approved" || normalizedStatus === "invoiced"
-          ? 1
-          : 0;
-  const displayName = String(
-    portal.client.preferred_name || portal.member.display_name,
-  );
-  const firstName = displayName.split(" ")[0];
-  const nextDelivery = conciergeDate(portal.client.next_delivery);
-  const navigationItems = portal.role === "admin"
-    ? [...conciergeNavigation, { id: "admin" as const, label: "Admin Console", symbol: "▤" }]
-    : conciergeNavigation;
-
-  function changeTab(nextTab: ConciergeTab) {
-    setTab(nextTab);
-    setNavOpen(false);
-  }
-
-  return (
-    <main className="concierge-app">
-      <aside className={`concierge-app-sidebar ${navOpen ? "open" : ""}`}>
-        <Link className="concierge-app-brand" href="/">
-          <img src="/able1self-logo.png" alt="" />
-          <span>ABLE1SELF</span>
-        </Link>
-        <p>MEMBERS ONLY</p>
-        <nav aria-label="Client portal navigation">
-          {navigationItems.map((item) => (
-            <button
-              aria-current={tab === item.id ? "page" : undefined}
-              className={tab === item.id ? "active" : ""}
-              key={item.id}
-              onClick={() => changeTab(item.id)}
-              type="button"
-            >
-              <span aria-hidden="true">{item.symbol}</span>
-              {item.label}
-              <i />
-            </button>
-          ))}
-        </nav>
-        <button className="concierge-able-return" type="button" onClick={onExit}>
-          ← Return to ABLE program
-        </button>
-        <div className="concierge-app-user">
-          <div>
-            {profileImage ? (
-              <img
-                src={`/api/client-portal/asset?id=${profileImage.id}`}
-                alt={displayName}
-              />
-            ) : (
-              initials(displayName)
-            )}
-          </div>
-          <p>
-            <strong>{displayName}</strong>
-            <small>{portal.member.email}</small>
-          </p>
-        </div>
-      </aside>
-
-      <section className="concierge-app-main">
-        <header className="concierge-app-topbar">
-          <button
-            className="concierge-app-menu"
-            type="button"
-            onClick={() => setNavOpen((value) => !value)}
-            aria-label="Toggle client portal navigation"
-          >
-            ☰
-          </button>
-          <div className="concierge-member-identity">
-            <div className="concierge-header-avatar">
-              {profileImage ? (
-                <img
-                  src={`/api/client-portal/asset?id=${profileImage.id}`}
-                  alt={displayName}
-                />
-              ) : (
-                initials(displayName)
-              )}
-            </div>
-            <div>
-              <strong>{displayName}</strong>
-              <span><i /> {String(portal.client.member_status || "active")} member</span>
-            </div>
-          </div>
-          <dl className="concierge-member-facts">
-            <div>
-              <dt>Occupation</dt>
-              <dd>{portal.member.professional_title || "Add occupation"}</dd>
-            </div>
-            <div>
-              <dt>Birthday</dt>
-              <dd>{conciergeDate(portal.client.birthday, "Add birthday")}</dd>
-            </div>
-            <div>
-              <dt>Member since</dt>
-              <dd>{conciergeDate(portal.member.created_at)}</dd>
-            </div>
-            <div>
-              <dt>Next delivery</dt>
-              <dd>{nextDelivery}</dd>
-            </div>
-          </dl>
-          {portal.role === "admin" && (
-            <label className="concierge-client-switcher">
-              <span>Viewing client</span>
-              <select
-                value={target}
-                onChange={(event) => {
-                  changeTab("dashboard");
-                  void load(event.target.value);
-                }}
-              >
-                {portal.members.map((member) => (
-                  <option key={member.email} value={member.email}>
-                    {member.display_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </header>
-
-        {notice && (
-          <div className="concierge-app-notice" role="status">
-            {notice}
-            <button type="button" onClick={() => setNotice("")} aria-label="Dismiss">
-              ×
-            </button>
-          </div>
-        )}
-
-        <div className="concierge-app-content">
-          {tab === "dashboard" && (
-            <div className="concierge-page concierge-dashboard-page">
-              <header className="concierge-page-heading">
-                <div>
-                  <span>PRIVATE CLIENT DASHBOARD</span>
-                  <h1>Welcome back, {firstName}.</h1>
-                  <p>Here is what is happening with your designs and fittings.</p>
-                </div>
-                <button type="button" onClick={() => changeTab("design")}>
-                  Open design board →
-                </button>
-              </header>
-
-              <section className="concierge-next-event">
-                <div>
-                  <span>NEXT WORKING SESSION WITH SHAWN</span>
-                  <strong>{nextSession?.title || "No session scheduled"}</strong>
-                  <p>
-                    {nextSession
-                      ? `${new Date(nextSession.starts_at).toLocaleString("en", { month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${nextSession.notes || nextSession.status}`
-                      : "Your next video call, fitting, or design review will appear here."}
-                  </p>
-                </div>
-                {Boolean(portal.client.calendly_url) && (
-                  <a href={String(portal.client.calendly_url)} target="_blank" rel="noreferrer">
-                    Request a time →
-                  </a>
-                )}
-              </section>
-
-              <section className="concierge-summary-grid">
-                <button type="button" onClick={() => changeTab("orders")}>
-                  <span>ACTIVE ORDERS</span>
-                  <strong>{activeOrders.length}</strong>
-                  <small>{activeOrder?.status || "Nothing in production"}</small>
-                </button>
-                <button type="button" onClick={() => changeTab("measurements")}>
-                  <span>MEASUREMENTS</span>
-                  <strong>{measurementPercent}%</strong>
-                  <small>{completedMeasurements} of {portal.measurementFields.length} saved</small>
-                </button>
-                <button type="button" onClick={() => changeTab("design")}>
-                  <span>DESIGN BOARDS</span>
-                  <strong>{boardNames.length}</strong>
-                  <small>{designAssets.length} reference items</small>
-                </button>
-                <button type="button" onClick={() => changeTab("profile")}>
-                  <span>NEXT DELIVERY</span>
-                  <strong>{String(portal.client.next_delivery || "—")}</strong>
-                  <small>{nextDelivery}</small>
-                </button>
-              </section>
-
-              <div className="concierge-feature-grid">
-                <article className="concierge-current-order">
-                  <header>
-                    <span>CURRENT ORDER</span>
-                    <button type="button" onClick={() => changeTab("orders")}>View all →</button>
-                  </header>
-                  <h2>{activeOrder?.title || "No active order"}</h2>
-                  <p>{activeOrder ? `${activeOrder.order_number} · ${activeOrder.status}` : "Approved designs will become tracked orders here."}</p>
-                  <div className="concierge-order-track">
-                    {orderStages.map((stage, index) => (
-                      <div className={index <= orderStage ? "complete" : ""} key={stage}>
-                        <i />
-                        <span>{stage}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {activeOrder?.notes && <blockquote>{activeOrder.notes}</blockquote>}
-                </article>
-
-                <article className="concierge-board-preview">
-                  <header>
-                    <span>DESIGN BOARD</span>
-                    <button type="button" onClick={() => changeTab("design")}>Open board →</button>
-                  </header>
-                  <div>
-                    {designAssets.filter((asset) => asset.content_type.startsWith("image/")).slice(0, 4).map((asset) => (
-                      <img
-                        key={asset.id}
-                        src={`/api/client-portal/asset?id=${asset.id}`}
-                        alt={asset.caption || asset.filename}
-                      />
-                    ))}
-                    {!designAssets.some((asset) => asset.content_type.startsWith("image/")) && (
-                      <p>Your uploaded inspiration, fabrics, silhouettes, and final direction will collect here.</p>
-                    )}
-                  </div>
-                  <strong>{selectedBoardName}</strong>
-                  <small>{designAssets.length ? `Updated ${conciergeDate(designAssets[0].created_at)}` : "Ready for your first references"}</small>
-                </article>
-              </div>
-
-              <section className="concierge-session-list">
-                <header>
-                  <span>WORKING SESSIONS</span>
-                  <strong>Calls, fittings, and design reviews</strong>
-                </header>
-                {portal.role === "admin" && (
-                  <form
-                    className="concierge-admin-form"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const form = new FormData(event.currentTarget);
-                      void patchPortal({
-                        action: "add_appointment",
-                        title: form.get("title"),
-                        startsAt: form.get("startsAt"),
-                        notes: form.get("notes"),
-                      });
-                      event.currentTarget.reset();
-                    }}
-                  >
-                    <input required name="title" placeholder="Session title" />
-                    <input required name="startsAt" type="datetime-local" />
-                    <input name="notes" placeholder="Video link, agenda, or preparation" />
-                    <button disabled={busy}>Schedule session</button>
-                  </form>
-                )}
-                <div>
-                  {portal.appointments.slice(0, 4).map((appointment) => (
-                    <article key={appointment.id}>
-                      <time>{conciergeDate(appointment.starts_at)}</time>
-                      <strong>{appointment.title}</strong>
-                      <p>{appointment.notes || "Session details pending."}</p>
-                      <em>{appointment.status}</em>
-                    </article>
-                  ))}
-                  {!portal.appointments.length && <p>No sessions have been scheduled yet.</p>}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {tab === "measurements" && (
-            <div className="concierge-page concierge-measurements-page">
-              <header className="concierge-page-heading">
-                <div>
-                  <span>FIT RECORD</span>
-                  <h1>Measurements.</h1>
-                  <p>Update the measurements Shawn uses for custom designs and fittings.</p>
-                </div>
-                <div className="concierge-unit-toggle" role="group" aria-label="Measurement units">
-                  <button className={unit === "in" ? "active" : ""} type="button" onClick={() => setUnit("in")}>Inches</button>
-                  <button className={unit === "cm" ? "active" : ""} type="button" onClick={() => setUnit("cm")}>Centimeters</button>
-                </div>
-              </header>
-              <section className="concierge-measurement-shell">
-                <aside>
-                  <span>MEASUREMENT SET</span>
-                  <strong>{measurementMeta.label}</strong>
-                  <p>{measurementMeta.measuredAt ? conciergeDate(measurementMeta.measuredAt) : "Date not added"}</p>
-                  <dl>
-                    <div><dt>Completion</dt><dd>{measurementPercent}%</dd></div>
-                    <div><dt>Measured by</dt><dd>{measurementMeta.measuredBy || "Not added"}</dd></div>
-                  </dl>
-                </aside>
-                <div className="concierge-measurement-workspace">
-                  <div className="concierge-measurement-meta">
-                    <label><span>Set label</span><input value={measurementMeta.label} onChange={(event) => setMeasurementMeta({ ...measurementMeta, label: event.target.value })} /></label>
-                    <label><span>Date measured</span><input type="date" value={measurementMeta.measuredAt} onChange={(event) => setMeasurementMeta({ ...measurementMeta, measuredAt: event.target.value })} /></label>
-                    <label><span>Measured by</span><input value={measurementMeta.measuredBy} onChange={(event) => setMeasurementMeta({ ...measurementMeta, measuredBy: event.target.value })} /></label>
-                  </div>
-                  <div className="concierge-measurement-grid">
-                    {portal.measurementFields.map(([key, label], index) => (
-                      <label key={key}>
-                        <span>{String(index + 1).padStart(2, "0")} · {label}</span>
-                        <div>
-                          <input
-                            inputMode="decimal"
-                            value={displayed(measurements[key] ?? "")}
-                            onChange={(event) => setMeasurements({ ...measurements, [key]: stored(event.target.value) })}
-                          />
-                          <i>{unit}</i>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  <label className="concierge-measurement-notes">
-                    <span>Fit notes</span>
-                    <textarea value={measurementMeta.notes} onChange={(event) => setMeasurementMeta({ ...measurementMeta, notes: event.target.value })} />
-                  </label>
-                  <button
-                    className="concierge-primary-button"
-                    disabled={busy}
-                    type="button"
-                    onClick={() => void patchPortal({
-                      action: "save_measurements",
-                      measurements,
-                      unit: "in",
-                      ...measurementMeta,
-                    })}
-                  >
-                    {busy ? "Saving…" : "Save measurements"}
-                  </button>
-                </div>
-              </section>
-            </div>
-          )}
-
-          {tab === "design" && (
-            <div className="concierge-page concierge-design-page">
-              <header className="concierge-page-heading">
-                <div>
-                  <span>VISUAL DIRECTION</span>
-                  <h1>Design board.</h1>
-                  <p>Collect the references you and Shawn will review together before a look becomes an order.</p>
-                </div>
-              </header>
-              <div className="concierge-board-tabs" role="tablist" aria-label="Design boards">
-                {(boardNames.length ? boardNames : ["My Vision"]).map((boardName) => {
-                  const count = designAssets.filter((asset) => (asset.board_title || "My Vision") === boardName).length;
-                  return (
-                    <button
-                      className={selectedBoardName === boardName ? "active" : ""}
-                      key={boardName}
-                      type="button"
-                      onClick={() => setSelectedBoard(boardName)}
-                    >
-                      <strong>{boardName}</strong>
-                      <span>{count} {count === 1 ? "item" : "items"}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="concierge-board-layout">
-                <section className="concierge-board-canvas">
-                  {boardItems.map((asset) => (
-                    <a key={asset.id} href={`/api/client-portal/asset?id=${asset.id}`} target="_blank" rel="noreferrer">
-                      {asset.content_type.startsWith("image/") ? (
-                        <img src={`/api/client-portal/asset?id=${asset.id}`} alt={asset.caption || asset.filename} />
-                      ) : (
-                        <div className="concierge-pdf-tile">PDF</div>
-                      )}
-                      <div>
-                        <span>{asset.item_type || "Inspiration"}</span>
-                        <strong>{asset.caption || asset.filename}</strong>
-                        <small>{asset.status || "idea"}</small>
-                      </div>
-                    </a>
-                  ))}
-                  {!boardItems.length && (
-                    <div className="concierge-board-empty">
-                      <strong>Start this design conversation.</strong>
-                      <p>Upload outfit references, fabric ideas, silhouettes, shoes, accessories, or a full Canva board.</p>
-                    </div>
-                  )}
-                </section>
-                <aside className="concierge-board-controls">
-                  <span>ADD TO BOARD</span>
-                  <h2>{selectedBoardName}</h2>
-                  <form key={selectedBoardName} onSubmit={(event) => void upload(event, "vision")}>
-                    <label><span>Board name</span><input name="boardTitle" defaultValue={selectedBoardName} required /></label>
-                    <label><span>Reference file</span><input name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required /></label>
-                    <label><span>Item type</span><select name="itemType" defaultValue="Inspiration"><option>Inspiration</option><option>Full look</option><option>Garment</option><option>Fabric</option><option>Color palette</option><option>Shoes & accessories</option><option>Canva board</option></select></label>
-                    <label><span>Decision status</span><select name="status" defaultValue="idea"><option value="idea">Idea</option><option value="review">Review with Shawn</option><option value="approved">Approved direction</option><option value="ordered">Moved to order</option></select></label>
-                    <label><span>Caption or design note</span><textarea name="caption" placeholder="What do you like, want changed, or want Shawn to consider?" /></label>
-                    <button className="concierge-primary-button" disabled={busy}>{busy ? "Uploading…" : "Upload to board"}</button>
-                  </form>
-                  <p>Images and PDFs up to 10 MB. Every board is private to this client account and Shawn&apos;s admin view.</p>
-                </aside>
-              </div>
-            </div>
-          )}
-
-          {tab === "orders" && (
-            <div className="concierge-page concierge-orders-page">
-              <header className="concierge-page-heading">
-                <div>
-                  <span>FINALIZED DESIGNS / DELIVERY</span>
-                  <h1>Orders.</h1>
-                  <p>Track what was approved, invoiced, produced, fitted, shipped, and delivered.</p>
-                </div>
-              </header>
-              <section className="concierge-order-stats">
-                <article><span>Active orders</span><strong>{activeOrders.length}</strong></article>
-                <article><span>In production</span><strong>{portal.orders.filter((order) => order.status === "in production").length}</strong></article>
-                <article><span>Delivered</span><strong>{portal.orders.filter((order) => order.status === "delivered").length}</strong></article>
-                <article><span>Next delivery</span><strong>{nextDelivery}</strong></article>
-              </section>
-              {portal.role === "admin" && (
-                <form
-                  className="concierge-admin-form concierge-new-order"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const form = new FormData(event.currentTarget);
-                    void patchPortal({
-                      action: "add_order",
-                      orderNumber: form.get("orderNumber"),
-                      title: form.get("title"),
-                      status: form.get("status"),
-                      amount: form.get("amount"),
-                      trackingUrl: form.get("trackingUrl"),
-                      notes: form.get("notes"),
-                    });
-                    event.currentTarget.reset();
-                  }}
-                >
-                  <input name="orderNumber" placeholder="Order number" required />
-                  <input name="title" placeholder="Finalized look or garment" required />
-                  <select name="status" defaultValue="planning">{orderStatuses.map((status) => <option key={status}>{status}</option>)}</select>
-                  <input name="amount" placeholder="Invoice amount" />
-                  <input name="trackingUrl" placeholder="Tracking or invoice link" />
-                  <input name="notes" placeholder="Fabric, fitting, production, or delivery notes" />
-                  <button disabled={busy}>Create order</button>
-                </form>
-              )}
-              <section className="concierge-order-list">
-                {portal.orders.map((order) => {
-                  const currentStage = order.status === "delivered" || order.status === "shipped"
-                    ? 4
-                    : order.status === "fitting"
-                      ? 3
-                      : order.status === "in production"
-                        ? 2
-                        : order.status === "approved" || order.status === "invoiced"
-                          ? 1
-                          : 0;
-                  return (
-                    <article key={order.id}>
-                      <header>
-                        <div><span>{order.order_number}</span><h2>{order.title}</h2></div>
-                        <em className={order.status === "delivered" ? "delivered" : ""}>{order.status}</em>
-                      </header>
-                      <div className="concierge-order-track compact">
-                        {orderStages.map((stage, index) => <div className={index <= currentStage ? "complete" : ""} key={stage}><i /><span>{stage}</span></div>)}
-                      </div>
-                      <dl>
-                        <div><dt>Invoice</dt><dd>{order.amount || "Pending"}</dd></div>
-                        <div><dt>Designer note</dt><dd>{order.notes || "Details are being prepared."}</dd></div>
-                      </dl>
-                      {order.tracking_url && <a href={order.tracking_url} target="_blank" rel="noreferrer">Open tracking or invoice →</a>}
-                      {portal.role === "admin" && (
-                        <details>
-                          <summary>Update order</summary>
-                          <form
-                            onSubmit={(event) => {
-                              event.preventDefault();
-                              const form = new FormData(event.currentTarget);
-                              void patchPortal({
-                                action: "update_order",
-                                orderId: order.id,
-                                status: form.get("status"),
-                                amount: form.get("amount"),
-                                trackingUrl: form.get("trackingUrl"),
-                                notes: form.get("notes"),
-                              });
-                            }}
-                          >
-                            <select name="status" defaultValue={order.status}>{orderStatuses.map((status) => <option key={status}>{status}</option>)}</select>
-                            <input name="amount" defaultValue={order.amount} placeholder="Invoice amount" />
-                            <input name="trackingUrl" defaultValue={order.tracking_url} placeholder="Tracking or invoice link" />
-                            <textarea name="notes" defaultValue={order.notes} placeholder="Order note" />
-                            <button disabled={busy}>Save order status</button>
-                          </form>
-                        </details>
-                      )}
-                    </article>
-                  );
-                })}
-                {!portal.orders.length && <div className="concierge-empty-record"><strong>No finalized orders yet.</strong><p>Once a design direction is approved and invoiced, its status will appear here.</p></div>}
-              </section>
-            </div>
-          )}
-
-          {tab === "profile" && (
-            <div className="concierge-page concierge-profile-page">
-              <header className="concierge-page-heading">
-                <div>
-                  <span>CLIENT RECORD</span>
-                  <h1>Profile.</h1>
-                  <p>Keep the contact, delivery, and personal details Shawn needs in one place.</p>
-                </div>
-              </header>
-              <div className="concierge-profile-layout">
-                <section className="concierge-photo-editor">
-                  <div>
-                    {profileImage ? <img src={`/api/client-portal/asset?id=${profileImage.id}`} alt={displayName} /> : <span>{initials(displayName)}</span>}
-                  </div>
-                  <h2>{displayName}</h2>
-                  <p>{portal.member.professional_title || "Client"}</p>
-                  <form onSubmit={(event) => void upload(event, "profile")}>
-                    <label><span>Choose a new profile photo</span><input name="file" type="file" accept="image/jpeg,image/png,image/webp" required /></label>
-                    <input name="caption" type="hidden" value="Profile photo" readOnly />
-                    <button className="concierge-primary-button" disabled={busy}>{busy ? "Uploading…" : profileImage ? "Change profile photo" : "Upload profile photo"}</button>
-                  </form>
-                </section>
-                <form
-                  className="concierge-profile-form"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const form = new FormData(event.currentTarget);
-                    void patchPortal({
-                      action: "save_client",
-                      preferredName: form.get("preferredName"),
-                      occupation: form.get("occupation"),
-                      birthday: form.get("birthday"),
-                      phone: form.get("phone"),
-                      shippingAddress: form.get("shippingAddress"),
-                      memberStatus: form.get("memberStatus"),
-                      nextDelivery: form.get("nextDelivery"),
-                      calendlyUrl: form.get("calendlyUrl"),
-                      stylistNotes: form.get("stylistNotes"),
-                    });
-                  }}
-                >
-                  <label><span>Preferred name</span><input name="preferredName" defaultValue={String(portal.client.preferred_name ?? "")} /></label>
-                  <label><span>Occupation</span><input name="occupation" defaultValue={portal.member.professional_title} /></label>
-                  <label><span>Birthday</span><input name="birthday" type="date" defaultValue={String(portal.client.birthday ?? "")} /></label>
-                  <label><span>Phone</span><input name="phone" defaultValue={String(portal.client.phone ?? "")} /></label>
-                  <label className="wide"><span>Shipping address</span><textarea name="shippingAddress" defaultValue={String(portal.client.shipping_address ?? "")} /></label>
-                  {portal.role === "admin" && (
-                    <>
-                      <label><span>Member status</span><select name="memberStatus" defaultValue={String(portal.client.member_status ?? "active")}><option value="active">Active</option><option value="paused">Paused</option><option value="complete">Complete</option></select></label>
-                      <label><span>Next delivery</span><input name="nextDelivery" type="date" defaultValue={String(portal.client.next_delivery ?? "")} /></label>
-                      <label className="wide"><span>Scheduling link</span><input name="calendlyUrl" defaultValue={String(portal.client.calendly_url ?? "")} /></label>
-                      <label className="wide"><span>Private designer notes</span><textarea name="stylistNotes" defaultValue={String(portal.client.stylist_notes ?? "")} /></label>
-                    </>
-                  )}
-                  <button className="concierge-primary-button" disabled={busy}>{busy ? "Saving…" : "Save profile"}</button>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {tab === "settings" && (
-            <div className="concierge-page concierge-settings-page">
-              <header className="concierge-page-heading">
-                <div>
-                  <span>ACCOUNT</span>
-                  <h1>Settings.</h1>
-                  <p>Manage this private client portal and move between your two Able1Self experiences.</p>
-                </div>
-              </header>
-              <section>
-                <article><span>Signed in as</span><strong>{portal.member.email}</strong></article>
-                <article><span>Client record</span><strong>{displayName}</strong></article>
-                <article><span>Portal access</span><strong>{String(portal.client.member_status || "active")}</strong></article>
-              </section>
-              <div>
-                <button className="concierge-primary-button" type="button" onClick={onExit}>Return to the ABLE program</button>
-                <button type="button" onClick={() => void signOut()}>Sign out</button>
-              </div>
-            </div>
-          )}
-
-          {tab === "admin" && portal.role === "admin" && (
-            <div className="concierge-page concierge-admin-page">
-              <header className="concierge-page-heading">
-                <div>
-                  <span>SHAWN / AMECHI ADMINISTRATION</span>
-                  <h1>Client operations.</h1>
-                  <p>Select a client above, then open any portal area to update their record exactly where they will see it.</p>
-                </div>
-                <button type="button" onClick={() => changeTab("dashboard")}>Open selected client →</button>
-              </header>
-              <section className="concierge-order-stats">
-                <article><span>Active clients</span><strong>{portal.adminStats?.active_members ?? portal.members.length}</strong></article>
-                <article><span>Orders</span><strong>{portal.adminStats?.orders ?? 0}</strong></article>
-                <article><span>Sessions</span><strong>{portal.adminStats?.appointments ?? 0}</strong></article>
-                <article><span>Uploaded assets</span><strong>{portal.adminStats?.assets ?? 0}</strong></article>
-              </section>
-              <section className="concierge-admin-activity">
-                <header><span>RECENT ACTIVITY</span><strong>Administrative audit trail</strong></header>
-                {portal.auditLog.map((entry) => (
-                  <article key={entry.id}>
-                    <span>{entry.action.replaceAll("_", " ")}</span>
-                    <strong>{entry.display_name}</strong>
-                    <p>{entry.actor_email}</p>
-                    <time>{new Date(entry.created_at).toLocaleString()}</time>
-                  </article>
-                ))}
-                {!portal.auditLog.length && <p>No administrative changes have been recorded yet.</p>}
-              </section>
-            </div>
-          )}
-        </div>
-      </section>
-    </main>
-  );
-}
 
 function Guide({ data }: { data: MemberData }) {
   const [draft, setDraft] = useState("");
@@ -2980,12 +2125,8 @@ function Guide({ data }: { data: MemberData }) {
   return (
     <div className="portal-view-stack">
       <div className="portal-page-heading">
-        <span className="portal-eyebrow">AI GUIDE / PROFILE-GROUNDED COACHING</span>
-        <h1>Ask from your actual data.</h1>
-        <p>
-          The Guide reads your saved profile, applies your engine-decided Core
-          Identity, and gives one concrete next action.
-        </p>
+        <span className="portal-eyebrow">AI GUIDE</span>
+        <h1>Your next move.</h1>
       </div>
       <div className="guide-layout">
         <section className="guide-console">
@@ -2996,13 +2137,6 @@ function Guide({ data }: { data: MemberData }) {
               <span>PROFILE CONTEXT / {data.profile.overallProgress}% READY</span>
             </div>
           </header>
-          <div className="guide-intro">
-            <span>SYSTEM BOUNDARY</span>
-            <p>
-              Your archetype is decided by the identity engine. The Guide can
-              explain and apply it, but it never re-types or contradicts it.
-            </p>
-          </div>
           <div className="guide-starters">
             {starters.map((starter) => (
               <button type="button" key={starter} onClick={() => setDraft(starter)}>
@@ -3035,7 +2169,7 @@ function Guide({ data }: { data: MemberData }) {
           {notice && <p className="guide-notice">{notice}</p>}
         </section>
         <aside className="guide-context">
-          <span>GROUNDING SIGNALS</span>
+          <span>YOUR PROFILE</span>
           <article>
             <small>CORE IDENTITY</small>
             <strong>
@@ -3054,7 +2188,6 @@ function Guide({ data }: { data: MemberData }) {
             <small>NEXT DIRECTION</small>
             <strong>{data.insights.direction}</strong>
           </article>
-          <p>Deterministic profile mode is active. Every response is grounded in saved member data and ends with one concrete action.</p>
         </aside>
       </div>
     </div>

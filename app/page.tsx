@@ -132,8 +132,6 @@ function Logo() {
 function IntroSequence() {
   return (
     <div className="intro-sequence" aria-hidden="true">
-      <div className="intro-orb intro-orb-one" />
-      <div className="intro-orb intro-orb-two" />
       <div className="intro-glass">
         <img src="/able1self-logo.png" alt="" />
       </div>
@@ -360,8 +358,9 @@ export default function Home() {
     ).matches;
     const introTimer = window.setTimeout(
       () => setIntroVisible(false),
-      reducedMotion ? 200 : 3200,
+      reducedMotion || sessionStorage.getItem('able-intro-seen') ? 0 : 1400,
     );
+    sessionStorage.setItem('able-intro-seen', '1');
     const sessionTimer = window.setTimeout(async () => {
       try {
         const response = await fetch("/api/auth/session");

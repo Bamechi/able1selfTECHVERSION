@@ -19,8 +19,10 @@
 
 import { rejectionBrands, signalPairs } from "./brand-signal";
 import { brandLedgerItems } from "./brand-ledger";
+import { reviseProgram } from "./program-revision";
 
 export type QuestionControl =
+  | "personality"
   | "choice" // pick one
   | "multi" // pick up to N
   | "rank" // pick and order top N
@@ -184,7 +186,7 @@ export const MBTI_TYPES = [
    THE QUESTION BANK — 14 MODULES
    ============================================================ */
 
-export const programModules: ProgramModule[] = [
+const originalModules: ProgramModule[] = [
   /* ===================== STAGE A — ANALYZE ===================== */
   {
     key: "A1",
@@ -1299,6 +1301,8 @@ export const programModules: ProgramModule[] = [
     ],
   },
 ];
+
+export const programModules = reviseProgram(originalModules);
 
 export const moduleMap = Object.fromEntries(
   programModules.map((programModule) => [programModule.key, programModule]),

@@ -195,7 +195,7 @@ test("ships the app-like system, real founder image, and accessible fallbacks", 
 
   assert.match(page, /IntersectionObserver/);
   assert.match(page, /IntroSequence/);
-  assert.match(page, /3200/);
+  assert.match(page, /1400/);
   assert.match(page, /useState<Audience>/);
   assert.match(page, /\/api\/auth\/session/);
   assert.match(page, /window\.location\.assign\("\/member"\)/);
@@ -321,7 +321,7 @@ test("accepts seeded accounts and rejects shared or invalid credentials", async 
   assert.equal((await outsider.json()).ok, false);
 });
 
-test("ships all revision batches and the standalone private client portal", async () => {
+test("preserves the fashion data for separation while removing its ABLE navigation", async () => {
   const [program, identity, astrology, lifePaths, signal, ledger, memberPage, portalStore, uploadRoute, adminRoute, migration, planMigration, conciergeMigration, revisionCss, hosting] = await Promise.all([
     readFile(new URL("../lib/program-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/identity-engine.ts", import.meta.url), "utf8"),
@@ -350,13 +350,11 @@ test("ships all revision batches and the standalone private client portal", asyn
   assert.equal((signal.match(/primaryAxis:/g) ?? []).length, 17);
   assert.match(ledger, /slice\(0,3\)/);
   assert.match(memberPage, /Find and verify location/);
-  assert.match(memberPage, /Members Only/);
-  assert.match(memberPage, /Admin console/);
-  assert.match(memberPage, /Return to ABLE program/);
-  assert.match(memberPage, /Design board\./);
-  assert.match(memberPage, /Change profile photo/);
-  assert.match(memberPage, /update_order/);
-  assert.match(memberPage, /if \(view === "client"/);
+  assert.doesNotMatch(memberPage, /Members Only/);
+  assert.doesNotMatch(memberPage, /label: "Members Only"/);
+  assert.doesNotMatch(memberPage, /label: "Admin console"/);
+  assert.doesNotMatch(memberPage, /function ClientPortal/);
+  assert.doesNotMatch(memberPage, /if \(view === "client"/);
   assert.match(memberPage, /add_plan_checkin/);
   assert.match(memberPage, /on_track/);
   assert.match(memberPage, /off_track/);
