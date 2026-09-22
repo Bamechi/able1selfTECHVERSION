@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 import "./revision.css";
 import "./portal-minimal.css";
+import "./luxury.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -53,7 +54,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: "try{document.documentElement.dataset.theme=localStorage.getItem('able-theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark')}catch(e){}" }} /></head>
       <body>{children}</body>
     </html>
   );

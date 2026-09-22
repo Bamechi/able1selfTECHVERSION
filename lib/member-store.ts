@@ -15,6 +15,7 @@ import {
 import { displayNameFromEmail } from "./auth-accounts";
 import { getD1 } from "./runtime";
 import { isAnswered, parsePersonality } from "./personality";
+import { targetPlan } from "./target-plan";
 
 type ProfileRow = {
   id: number;
@@ -455,6 +456,20 @@ function parseJson<T>(value: string | undefined, fallback: T): T {
 export async function getMemberData(email: string, preferredName?: string) {
   const profile = await ensurePilot(email, preferredName);
   const db = getD1();
+  const embark = await db.prepare("SELECT module_key FROM module_progress WHERE member_id = ? AND stage = 'E' AND status = 'complete'").bind(profile.id).all();
+  if (embark.results.length === 3) {
+    const generated = await db.prepare("SELECT member_id FROM target_plan_generations WHERE member_id = ?").bind(profile.id).first();
+    if (!generated) {
+      const saved = await db.prepare("SELECT question_key, answer FROM survey_responses WHERE member_id = ?").bind(profile.id).all<ResponseRow>();
+      const now = new Date();
+      const items = targetPlan(rowsToAnswers(saved.results), now);
+      if (items.length) await db.batch([
+        ...items.map((item,index) => db.prepare(`INSERT INTO action_plan_items (member_id,title,why,success_metric,start_date,due_date,checkin_cadence,status,sort_order,created_at,updated_at) SELECT ?,?,?,?,?,?,?,'open',?,?,? WHERE NOT EXISTS (SELECT 1 FROM target_plan_generations WHERE member_id = ?) AND NOT EXISTS (SELECT 1 FROM action_plan_items WHERE member_id = ? AND title = ?)`)
+          .bind(profile.id,item.title,item.why,item.successMetric,item.startDate,item.dueDate,item.cadence,index,now.toISOString(),now.toISOString(),profile.id,profile.id,item.title)),
+        db.prepare("INSERT OR IGNORE INTO target_plan_generations (member_id,created_at) VALUES (?,?)").bind(profile.id,now.toISOString()),
+      ]);
+    }
+  }
   const [
     progressResult,
     responsesResult,

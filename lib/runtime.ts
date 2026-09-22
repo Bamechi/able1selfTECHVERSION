@@ -2,6 +2,8 @@ export type AbleRuntimeEnv = {
   DB?: D1Database;
   MEMBER_UPLOADS?: R2Bucket;
   AUTH_SESSION_SECRET?: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_MODEL?: string;
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
   SUPABASE_ANON_KEY?: string;

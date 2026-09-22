@@ -442,3 +442,28 @@ export const nudgeLog = sqliteTable(
     index("idx_nudge_log_member_sent").on(table.memberId, table.sentAt),
   ],
 );
+
+export const communityMembers = sqliteTable("community_members", {
+  memberId: integer("member_id").primaryKey(),
+  displayName: text("display_name").notNull(),
+  headline: text("headline").notNull().default(""),
+  bio: text("bio").notNull().default(""),
+  joinedAt: text("joined_at").notNull(),
+});
+export const clubPosts = sqliteTable("club_posts", {
+  id: integer("id").primaryKey({ autoIncrement:true }),
+  memberId: integer("member_id").notNull(),
+  body: text("body").notNull(),
+  createdAt: text("created_at").notNull(),
+}, table => [index("idx_club_posts_created").on(table.createdAt)]);
+export const directMessages = sqliteTable("direct_messages", {
+  id: integer("id").primaryKey({ autoIncrement:true }),
+  senderId: integer("sender_id").notNull(),
+  recipientId: integer("recipient_id").notNull(),
+  body: text("body").notNull(),
+  createdAt: text("created_at").notNull(),
+}, table => [index("idx_direct_messages_participants").on(table.senderId,table.recipientId,table.createdAt)]);
+export const targetPlanGenerations = sqliteTable("target_plan_generations", {
+  memberId: integer("member_id").primaryKey(),
+  createdAt: text("created_at").notNull(),
+});

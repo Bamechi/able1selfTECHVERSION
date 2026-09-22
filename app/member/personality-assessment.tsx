@@ -39,13 +39,14 @@ export function PersonalityAssessment({ value, onChange, onSave, saving }: {
     <div className="personality-progress"><span>{complete} of 52 answered</span><span>{page < 12 ? personalityAxes[Math.floor(page / 3)].name : 'Your preferences'}</span></div>
     <progress max={52} value={complete} aria-label="Personality assessment progress" />
     {page === 0 && <p className="personality-caption">Answer for your usual self. About 8 minutes.</p>}
+    {page === 12 && <h3 className="personality-caption">Which feels closer to you?</h3>}
     {page < 12 ? questions.map(item => <fieldset key={item.key} disabled={saving}>
       <legend>{item.prompt}</legend>
       <div className="personality-choices">{labels.map((label, i) => <label key={label} className={answers[item.key] === i + 1 ? 'selected' : ''}>
         <input type="radio" name={item.key} value={i + 1} checked={answers[item.key] === i + 1} onChange={() => onChange(encodePersonality({ ...answers, [item.key]: i + 1 }))} /><span>{label}</span>
       </label>)}</div>
     </fieldset>) : personalityAxes.map((axis, index) => <fieldset key={axis.name} disabled={saving}>
-      <legend>Which feels closer to you: {axis.name.toLowerCase()}?</legend>
+      <legend>{axis.name}</legend>
       <div className="personality-preferences">{axis.labels.map((label, i) => <label key={label} className={answers[`tie${index}`] === i + 1 ? 'selected' : ''}>
         <input type="radio" name={`tie${index}`} checked={answers[`tie${index}`] === i + 1} onChange={() => onChange(encodePersonality({ ...answers, [`tie${index}`]: i + 1 }))} />{label}
       </label>)}</div>

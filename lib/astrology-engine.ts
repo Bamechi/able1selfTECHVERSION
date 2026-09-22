@@ -78,22 +78,29 @@ function localTimeToUtc(input: BirthInput) {
   const [year, month, day] = input.date.split("-").map(Number);
   const [hour, minute] = input.time.split(":").map(Number);
   if (![year, month, day, hour, minute].every(Number.isFinite)) return null;
+  if (year < 100 || month < 1 || month > 12 || day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate() || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
   const targetWall = Date.UTC(year, month - 1, day, hour, minute);
-  let guess = targetWall;
-  for (let index = 0; index < 2; index += 1) {
-    const parts = new Intl.DateTimeFormat("en-US", {
+  let formatter: Intl.DateTimeFormat;
+  try {
+    formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: input.timezone,
       year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
-    }).formatToParts(new Date(guess));
+    });
+  } catch { return null; }
+  let guess = targetWall;
+  for (let index = 0; index < 3; index += 1) {
+    const parts = formatter.formatToParts(new Date(guess));
     const record = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     const renderedWall = Date.UTC(
       Number(record.year), Number(record.month) - 1, Number(record.day),
       Number(record.hour), Number(record.minute), Number(record.second),
     );
+    if (renderedWall === targetWall) return new Date(guess);
     guess -= renderedWall - targetWall;
   }
-  return new Date(guess);
+  // A skipped local time during a daylight-saving transition has no valid UTC match.
+  return null;
 }
 
 function julianDay(date: Date) {
@@ -156,10 +163,11 @@ function position(longitude: number): ChartPosition {
 }
 
 export function calculateAstrology(input: BirthInput, ayanamsa = 0): AstrologyChart | null {
+  if (input.latitude == null || input.longitude == null || String(input.latitude).trim() === '' || String(input.longitude).trim() === '') return null;
   const utc = localTimeToUtc(input);
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
-  if (!utc || !Number.isFinite(latitude) || !Number.isFinite(longitude) || !input.timezone) return null;
+  if (!utc || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180 || !input.timezone) return null;
   const jd = julianDay(utc);
   const t = (jd - 2451545) / 36525;
   return {

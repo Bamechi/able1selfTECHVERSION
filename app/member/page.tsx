@@ -1,4 +1,6 @@
 "use client";
+import { ThemeToggle } from "../theme-toggle";
+import { Messaging } from "./messaging";
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
@@ -156,10 +158,9 @@ const navigation: Array<{
   { id: "overview", label: "Home", symbol: "⌂" },
   { id: "program", label: "Program", symbol: "◫" },
   { id: "profile", label: "My profile", symbol: "◎" },
-  { id: "plan", label: "90-day plan", symbol: "↗" },
+  { id: "plan", label: "Target plan", symbol: "↗" },
   { id: "guide", label: "AI Guide", symbol: "◇" },
-  { id: "community", label: "The Room", symbol: "◌" },
-  { id: "messages", label: "Messages", symbol: "↗" },
+  { id: "messages", label: "Messaging", symbol: "↗" },
   { id: "settings", label: "Settings", symbol: "⌘" },
 ];
 
@@ -188,7 +189,7 @@ const stageDetails = [
   {
     letter: "E",
     name: "Embark",
-    description: "Choose the move and build the 90-day system.",
+    description: "Choose your goal, milestones, and timeline.",
   },
 ];
 
@@ -233,8 +234,14 @@ function BirthField({
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
-  const update = (key: string, next: string | number) =>
-    onChange({ ...birth, [key]: next } as AnswerValue);
+  const update = (key: string, next: string | number) => {
+    const changed = { ...birth, [key]: next };
+    if (['city', 'state', 'country'].includes(key)) {
+      delete changed.latitude; delete changed.longitude; delete changed.timezone;
+      setResults([]);
+    }
+    onChange(changed as AnswerValue);
+  };
 
   async function resolveLocation() {
     setLocating(true);
@@ -527,6 +534,9 @@ function formatAnswer(value: AnswerValue) {
   if (personality) return `${personality.type} · ${personality.description}`;
   if (Array.isArray(value)) return value.join(" · ");
   if (value && typeof value === "object") {
+    if ('date' in value && ('city' in value || 'fullName' in value)) {
+      return ['fullName' in value ? value.fullName : undefined, [value.date, value.time].filter(Boolean).join(' at '), [value.city, value.state, value.country].filter(Boolean).join(', ')].filter(Boolean).join('\n');
+    }
     return Object.entries(value)
       .filter(([, item]) => Boolean(item))
       .map(([key, item]) => `${key}: ${String(item)}`)
@@ -800,7 +810,7 @@ function ModulePlayer({
             <p>{formatAnswer(answers[key]) || 'Not added yet'}</p>
           </section>)}
           <button className="module-secondary" onClick={() => setLedgerExpanded(true)}>Open detailed review (optional)</button>
-        </main> : <main>
+        </main> : <main key={question.key} className="question-transition">
           <span className="assessment-number">
             QUESTION {String(questionIndex + 1).padStart(2, "0")} / {" "}
             {String(programModule.questions.length).padStart(2, "0")}
@@ -1138,6 +1148,7 @@ export default function MemberPage() {
             Progress saved securely
           </div>
           <div className="portal-top-actions">
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => setActiveModule(currentModule)}
@@ -1241,7 +1252,7 @@ export default function MemberPage() {
             <Community data={data} saving={saving} mutate={mutate} />
           )}
           {view === "messages" && (
-            <Messages data={data} saving={saving} mutate={mutate} />
+            <Messaging displayName={data.profile.displayName} />
           )}
           {view === "settings" && (
             <Settings data={data} saving={saving} mutate={mutate} />
@@ -1334,8 +1345,9 @@ function Overview({
             Welcome back, {data.profile.displayName}.
           </h1>
           <p>
-            {reviewCount ? `${reviewCount} ${reviewCount === 1 ? 'module has' : 'modules have'} new questions to review.` : `${data.profile.completedModules} of ${programModules.length} modules complete.`}
+            {reviewCount ? `${reviewCount} ${reviewCount === 1 ? 'module has' : 'modules have'} new questions to review.` : finished ? 'Your profile is ready. Put it into motion.' : 'A little more clarity. One step at a time.'}
           </p>
+          <div className="overall-progress"><span>Your journey <strong>{data.profile.overallProgress}%</strong></span><progress max={100} value={data.profile.overallProgress} aria-label="Overall program progress" /></div>
           {data.identity && (
             <button
               className="dashboard-identity-chip"
@@ -1370,7 +1382,7 @@ function Overview({
           const target = modules.find(module => needsReview(module, data) || data.progress.find(item => item.module_key === module.key)?.status !== 'complete') ?? modules[0];
           const unlocked = data.unlocks[target.key] || data.progress.some(item => item.module_key === target.key && item.status === 'complete');
           const done = modules.filter(module => data.progress.some(item => item.module_key === module.key && item.status === 'complete') && !needsReview(module, data)).length;
-          return <button key={stage.key} disabled={!unlocked} onClick={() => onOpenModule(target)}><strong>{stage.key}</strong><span>{stage.name}<small>{done}/{modules.length} complete</small></span></button>;
+          return <button key={stage.key} onClick={() => unlocked ? onOpenModule(target) : onNavigate('program')}><strong>{stage.key}</strong><span>{stage.name}<small>{Math.round(done/modules.length*100)}%</small></span><progress max={modules.length} value={done} aria-label={`${stage.name} progress`} /></button>;
         })}
       </nav>
 
@@ -1386,7 +1398,7 @@ function Overview({
           <small>{currentModule.key} / active</small>
         </article>
         <article>
-          <span>90-day actions</span>
+          <span>Target actions</span>
           <strong>{openPlanItems.length}</strong>
           <small>Open commitments</small>
         </article>
@@ -1423,7 +1435,7 @@ function Overview({
           <span>NEXT MOVE</span>
           <h2>
             {openPlanItems[0]?.title ??
-              "Add the first commitment to your 90-day action plan."}
+              "Your next chapter starts with one move."}
           </h2>
           <p>
             {openPlanItems[0]?.due_date
@@ -1469,6 +1481,7 @@ function Program({
         </div>
         <strong className="program-total">
           {data.profile.overallProgress}% <span>OVERALL</span>
+          <progress max={100} value={data.profile.overallProgress} aria-label="Overall program progress" />
         </strong>
       </div>
 
@@ -1484,8 +1497,8 @@ function Program({
             progress.reduce((sum, item) => sum + (item?.progress ?? 0), 0) / modules.length,
           );
           return (
-            <article key={stage.letter}>
-              <div className="portal-stage-head">
+            <details className="stage-disclosure" key={stage.letter} open={stage.letter === data.profile.currentModule[0]}>
+              <summary className="portal-stage-head">
                 <div className="portal-stage-letter">{stage.letter}</div>
                 <div>
                   <small>STAGE {stage.letter}</small>
@@ -1502,7 +1515,7 @@ function Program({
                   </span>
                   <strong>{stageProgress}%</strong>
                 </div>
-              </div>
+              </summary>
               <div className="portal-stage-bar">
                 <span style={{ width: `${stageProgress}%` }} />
               </div>
@@ -1544,7 +1557,7 @@ function Program({
                   );
                 })}
               </ol>
-            </article>
+            </details>
           );
         })}
       </div>
@@ -1822,16 +1835,14 @@ function Plan({
     <div className="portal-view-stack">
       <div className="portal-page-heading">
         <span className="portal-eyebrow">EMBARK / EXECUTION SYSTEM</span>
-        <h1>Your 90-day plan.</h1>
+        <h1>Your target plan.</h1>
         <p>
-          Define the outcome, name why it matters, and tell the truth at every
-          checkpoint. The signal gets greener when you stay on track and redder
-          when the plan needs intervention.
+          Your goal, milestones, and next moves. Built from your Embark responses.
         </p>
       </div>
       <section className={`plan-health ${healthTone}`} style={{ "--track-score": `${trackScore}%` } as CSSProperties}>
         <div>
-          <span>90-DAY EXECUTION SIGNAL</span>
+          <span>{String(data.responses.find(item => item.question_key === 'e1_horizon')?.answer ?? 'YOUR TARGET')} / PROGRESS</span>
           <strong>{data.planCheckins.length ? `${trackScore}% on track` : "Awaiting first check-in"}</strong>
           <p>{data.plan.length} commitments · {data.planCheckins.length} checkpoints logged</p>
         </div>
@@ -1879,7 +1890,7 @@ function Plan({
           />
         </label>
         <label>
-          <span>90-DAY TARGET</span>
+          <span>TARGET DATE</span>
           <input
             type="date"
             value={dueDate}
@@ -1928,7 +1939,7 @@ function Plan({
               <div className="commitment-brief">
                 <p><span>Why it matters</span><strong>{item.why || "Add the reason behind this commitment."}</strong></p>
                 <p><span>Proof of success</span><strong>{item.success_metric || "Define the measurable finish line."}</strong></p>
-                <p><span>Window</span><strong>{item.start_date || "Start now"} → {item.due_date || "Day 90"}</strong></p>
+                <p><span>Window</span><strong>{item.start_date || "Start now"} → {item.due_date || "Choose a date"}</strong></p>
                 <p><span>Rhythm</span><strong>{item.checkin_cadence === "biweekly" ? "Every two weeks" : item.checkin_cadence === "monthly" ? "Every month" : "Every week"}</strong></p>
               </div>
               <div className="commitment-track">
@@ -1936,7 +1947,7 @@ function Plan({
               </div>
               <details className="checkin-workspace">
                 <summary>Log checkpoint <span>{checkins.length} recorded</span></summary>
-                <form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void mutate({ action:"add_plan_checkin", id:item.id, checkpointDate:form.get("checkpointDate"), status:form.get("status"), explanation:form.get("explanation") }).then(() => event.currentTarget.reset()); }}>
+                <form onSubmit={(event) => { event.preventDefault(); const element = event.currentTarget; const form = new FormData(element); void mutate({ action:"add_plan_checkin", id:item.id, checkpointDate:form.get("checkpointDate"), status:form.get("status"), explanation:form.get("explanation") }).then(() => element.reset()).catch(() => {}); }}>
                   <label><span>Checkpoint date</span><input name="checkpointDate" type="date" defaultValue={new Date().toISOString().slice(0,10)} required /></label>
                   <label><span>Status</span><select name="status" defaultValue="on_track"><option value="on_track">On track</option><option value="off_track">Off track</option></select></label>
                   <label className="checkin-explanation"><span>Status and why</span><textarea name="explanation" placeholder="What happened, what is working, and what needs to change next?" required /></label>
@@ -1950,7 +1961,7 @@ function Plan({
           )})
         ) : (
           <p className="empty-state">
-            Build the first 90-day commitment above. Include the reason, the
+            Complete Embark to generate your target plan, or add a commitment above. Include the reason, the
             measurable finish line, and the rhythm you will use to stay honest.
           </p>
         )}
@@ -2111,6 +2122,10 @@ function Guide({ data }: { data: MemberData }) {
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState("");
   const [asking, setAsking] = useState(false);
+  const [connected,setConnected] = useState(false);
+  const [consent,setConsent] = useState(false);
+  const [history,setHistory] = useState<Array<{role:string;body:string}>>([]);
+  useEffect(()=>{ fetch('/api/guide',{cache:'no-store'}).then(async response=>{if(!response.ok) throw new Error('Unable to load Guide history.');return response.json();}).then(result=>{setConnected(result.connected);setHistory(result.messages??[]);}).catch(error=>setNotice(error.message)); },[]);
   const starters = data.identity
     ? [
         `What does being ${data.identity.archetype.name} mean for how I sell?`,
@@ -2137,6 +2152,8 @@ function Guide({ data }: { data: MemberData }) {
               <span>PROFILE CONTEXT / {data.profile.overallProgress}% READY</span>
             </div>
           </header>
+          {!connected && <p className="guide-service-note">The conversational Guide is awaiting an AI connection. Your profile and target plan are still available.</p>}
+          <div className="guide-thread" aria-live="polite">{history.map((message,index)=><article className={message.role} key={index}><span>{message.role==='member'?'You':'Able Guide'}</span><p>{message.body}</p></article>)}{asking&&<p>Reading your profile...</p>}</div>
           <div className="guide-starters">
             {starters.map((starter) => (
               <button type="button" key={starter} onClick={() => setDraft(starter)}>
@@ -2149,10 +2166,10 @@ function Guide({ data }: { data: MemberData }) {
               event.preventDefault();
               setAsking(true); setNotice("");
               try {
-                const response = await fetch("/api/guide", {method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({question:draft})});
+                const response = await fetch("/api/guide", {method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({question:draft,consent})});
                 const result = await response.json() as {answer?:string;error?:string};
                 if (!response.ok || !result.answer) throw new Error(result.error ?? "Guide request failed.");
-                setNotice(result.answer);
+                setHistory(previous=>[...previous,{role:'member',body:draft},{role:'assistant',body:result.answer!}]);setDraft('');
               } catch (error) { setNotice(error instanceof Error ? error.message : "Guide request failed."); }
               finally { setAsking(false); }
             }}
@@ -2164,7 +2181,8 @@ function Guide({ data }: { data: MemberData }) {
               rows={4}
               required
             />
-            <button disabled={asking} type="submit">{asking ? "Reading your profile..." : "Ask the Guide →"}</button>
+            <label className="guide-consent"><input type="checkbox" checked={consent} onChange={event=>setConsent(event.target.checked)} /> Use my saved answers and chat history with the connected AI provider. Exact birth details are excluded.</label>
+            <button disabled={asking||!connected||!consent} type="submit">{asking ? "Reading your profile..." : "Ask the Guide →"}</button>
           </form>
           {notice && <p className="guide-notice">{notice}</p>}
         </section>

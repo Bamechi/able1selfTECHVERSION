@@ -167,7 +167,9 @@ test("server-renders the finished Able1Self experience and metadata", async () =
   assert.match(html, /Shawn Daniels/);
   assert.match(html, /Member login/);
   assert.match(html, /able1self-logo\.png/);
-  assert.match(html, /The transformation/);
+  assert.match(html, /able-devices-dark\.png/);
+  assert.match(html, /able-devices-light\.png/);
+  assert.match(html, /Switch to light mode/);
   assert.match(html, /Starter/);
   assert.match(html, /Premium/);
   assert.match(html, /VIP/);
@@ -463,7 +465,7 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
 
   assert.match(memberPage, /THE ABLE PROGRAM/);
   assert.match(memberPage, /PERSONALIZED IDENTITY PROFILE/);
-  assert.match(memberPage, /Your 90-day plan/);
+  assert.match(memberPage, /Your target plan/);
   assert.match(memberPage, /THE ROOM/);
   assert.match(memberPage, /ACCOUNTABILITY/);
   assert.match(memberPage, /save_response/);

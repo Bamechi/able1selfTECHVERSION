@@ -3,6 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { AuthModal } from "./member-experience";
+import { ThemeToggle } from "./theme-toggle";
+import { ArrowUpRight, ArrowRight } from "lucide-react";
 
 type Audience = "entrepreneur" | "corporate";
 
@@ -10,11 +12,11 @@ const audiences = {
   entrepreneur: {
     label: "I’m building a business",
     headline: "Turn self-knowledge into better business decisions.",
-    copy: "Clarify what you are uniquely built to do, how you create value, which relationships matter, and what to execute over the next 90 days.",
+    copy: "Clarify what you are uniquely built to do, how you create value, which relationships matter, and what to do next.",
     outcomes: [
       "A clear founder position",
       "A map of skills and revenue paths",
-      "A focused 90-day execution plan",
+      "A focused personal target plan",
     ],
   },
   corporate: {
@@ -68,13 +70,13 @@ const stages = [
     name: "Embark",
     summary: "Choose a direction and put it into motion.",
     detail:
-      "Reverse-engineer one meaningful goal into a focused 90-day plan with accountability built in.",
+      "Turn one meaningful goal into a focused plan on your timeline, with accountability built in.",
     modules: [
       "Your Launch Moment",
       "Your First 90 Days",
       "Your Accountability System",
     ],
-    output: "90-day action plan",
+    output: "Personal target plan",
   },
 ];
 
@@ -97,7 +99,7 @@ const faqs = [
   {
     question: "What do I receive at the end?",
     answer:
-      "You receive a Personalized Identity Profile that brings together your strengths, values, decision patterns, professional positioning, network map, opportunity paths, and 90-day action plan.",
+      "You receive a Personalized Identity Profile that brings together your strengths, values, decision patterns, professional positioning, network map, opportunity paths, and personal target plan.",
   },
   {
     question: "How does the community work?",
@@ -107,12 +109,12 @@ const faqs = [
   {
     question: "How long does it take?",
     answer:
-      "The program is self-paced. Most people can complete the core work in several weeks, then use the Embark stage to execute their 90-day plan.",
+      "The program is self-paced. Work through the questions at your own pace, then choose a 90-day, six-month, nine-month, or twelve-month target in Embark.",
   },
 ];
 
 function Arrow() {
-  return <span aria-hidden="true">↗</span>;
+  return <ArrowUpRight size={18} aria-hidden="true" />;
 }
 
 function Logo() {
@@ -274,7 +276,7 @@ function IdentityDashboard() {
         </article>
         <article className="action-plan">
           <div>
-            <span className="data-label">90-day focus</span>
+            <span className="data-label">Current focus</span>
             <strong>Launch the next chapter</strong>
           </div>
           <ProgressRing value={42} label="Plan" />
@@ -415,7 +417,7 @@ export default function Home() {
   }
 
   return (
-    <main>
+    <main className="public-site">
       {introVisible && <IntroSequence />}
       {authOpen && (
         <AuthModal
@@ -452,9 +454,9 @@ export default function Home() {
             {memberEmail ? "Member dashboard" : "Member login"}
           </button>
         </nav>
-        <a className="nav-cta" href="#access">
+        <div className="header-controls"><ThemeToggle /><a className="nav-cta" href="#access">
           Start the program <Arrow />
-        </a>
+        </a></div>
         <button
           className={`menu-toggle ${menuOpen ? "open" : ""}`}
           type="button"
@@ -468,25 +470,20 @@ export default function Home() {
       </header>
 
       <section className="hero" id="top">
-        <div className="hero-grid" aria-hidden="true" />
-        <div className="hero-glow" aria-hidden="true" />
+        <div className="product-hero-media"><img src="/images/able-devices-dark.png" className="dark-device" alt="Able1Self member dashboard on a laptop and phone" /><img src="/images/able-devices-light.png" className="light-device" alt="Able1Self member dashboard on a laptop and phone" /></div>
         <div className="hero-copy">
           <div className="status-pill reveal">
-            <span />
-            The ABLE Program · Enrollment open
+            The ABLE Program
           </div>
           <h1 className="reveal">
-            Know yourself.
-            <span>Build what comes next.</span>
+            ABLE1SELF
           </h1>
           <p className="hero-intro reveal">
-            A four-stage self-development system that turns reflection into a
-            clear professional identity, stronger decisions, and a plan you can
-            act on.
+            Know yourself. Build what comes next.
           </p>
           <div className="hero-actions reveal">
             <a className="button primary" href="#access">
-              Start your ABLE journey <Arrow />
+              Start your journey <Arrow />
             </a>
             <button
               className="button secondary"
@@ -494,7 +491,7 @@ export default function Home() {
               onClick={openMemberAccess}
             >
               {memberEmail ? "Open dashboard" : "Member login"}{" "}
-              <span aria-hidden="true">→</span>
+              <ArrowRight size={18} aria-hidden="true" />
             </button>
           </div>
           <div className="built-for reveal">
@@ -506,7 +503,6 @@ export default function Home() {
             <p>People at a crossroads</p>
           </div>
         </div>
-        <PlatformPreview />
         <div className="hero-metrics">
           <div className="reveal">
             <strong>04</strong>
@@ -517,8 +513,8 @@ export default function Home() {
             <span>focused modules</span>
           </div>
           <div className="reveal">
-            <strong>90</strong>
-            <span>day action plan</span>
+            <strong>01</strong>
+            <span>personal target plan</span>
           </div>
         </div>
       </section>
@@ -653,7 +649,7 @@ export default function Home() {
               ["01", "Strengths, values, and decision patterns"],
               ["02", "Professional positioning and brand statement"],
               ["03", "Network map and opportunity pathways"],
-              ["04", "Focused 90-day action plan"],
+              ["04", "Personal target plan"],
             ].map(([number, text]) => (
               <div key={number}>
                 <span>{number}</span>

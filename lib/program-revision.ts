@@ -57,9 +57,9 @@ export function reviseProgram(modules: ProgramModule[]): ProgramModule[] {
       choice('l3_rhythm', 'How often will you share your story or offer?', ['Twice a week', 'Weekly', 'Every two weeks', 'Monthly']),
     ];
     if (module.key === 'E1') questions = [...find(module, ['e1_goal', 'e1_horizon', 'e1_activation', 'e1_success']), text('e1_next_action', 'What is the first action, and when will you do it?')];
-    if (module.key === 'E2') questions = [...find(module, ['e2_m1', 'e2_m2', 'e2_m3', 'e2_weekly', 'e2_derailer', 'e2_if_stuck']), text('e2_alignment', 'Which partnership or environment would move you forward?', false)];
+    if (module.key === 'E2') questions = [...find(module, ['e2_m1', 'e2_m2', 'e2_m3', 'e2_weekly', 'e2_derailer', 'e2_if_stuck']).map(q => /^e2_m[123]$/.test(q.key) ? { ...q, prompt: `Milestone ${q.key.slice(-1)}: what will you complete?`, guidance: 'A clear outcome on the way to your target.' } : q), text('e2_alignment', 'Which partnership or environment would move you forward?', false)];
     if (module.key === 'E3') questions = [text('e3_partner', 'Who will you check in with?'), ...find(module, ['e3_checkin', 'e3_momentum', 'e3_support', 'e3_commitment'])];
     const descriptions: Record<string, string> = { A1: 'Your starting point, personality, and strengths.', A2: 'Your birth chart and working rhythm.', A3: 'Five reflections on who you are becoming.', B2: 'Your business foundations and digital presence.', L1: 'Your existing network and next audience.', L2: 'Turn a solution you know into an offer.', L3: 'Connect your story to a clear next step.', E1: 'Choose your goal and first action.' };
-    return { ...module, ...(module.key === 'B2' ? { title: 'Build Your Presence', deliverable: 'Business & Brand Foundations' } : {}), description: descriptions[module.key] ?? module.description, questions };
+    return { ...module, ...(module.key === 'B2' ? { title: 'Build Your Presence', deliverable: 'Business & Brand Foundations' } : {}), ...(module.key === 'E2' ? { title: 'Your Target Plan', deliverable: 'Personal Target Plan' } : {}), description: module.key === 'E2' ? 'Three milestones toward your chosen target.' : descriptions[module.key] ?? module.description, questions };
   });
 }
