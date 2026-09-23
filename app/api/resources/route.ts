@@ -17,6 +17,15 @@ type ResourcePayload = {
 
 const allowedTypes = new Set(["offer", "hiring", "opportunity"]);
 const allowedEngagement = new Set(["freelance", "full-time", "part-time", "service", "collaboration", "other"]);
+const seededResources = [
+  ["hiring", "Brand identity designer for boutique launch", "North House Studio", "Remote / Atlanta", "freelance", "$3,500-$6,000", "Looking for a designer who can create a clean launch identity, social templates, and a simple usage guide for a premium lifestyle concept.", "Submit portfolio and two relevant case studies."],
+  ["offer", "One-day content direction intensive", "ABLE member offer", "Remote", "service", "$750 member rate", "A focused strategy day for founders who need content pillars, shoot direction, and a practical 30-day capture list before a campaign.", "Submit your launch date and current offer."],
+  ["opportunity", "Pop-up vendor table at creative wellness market", "Sunday House Market", "Charlotte, NC", "collaboration", "Revenue share / vendor split", "Two tables open for fashion, grooming, print, or personal brand products at an invite-only wellness and creative market.", "Send product photos and expected setup needs."],
+  ["hiring", "Part-time operations assistant for fashion client work", "Private studio", "New York / Hybrid", "part-time", "$28-$40/hr", "Support fittings, client follow-up, sample tracking, appointment prep, and vendor communication for a designer-led studio.", "Reply with availability and operations background."],
+  ["offer", "Legal setup checklist review", "Member professional service", "Remote", "service", "$300 fixed", "Review LLC, EIN, trademark, insurance, contracts, and payment setup. Built for early founders who need the basics checked without extra noise.", "List what you already have and what is missing."],
+  ["hiring", "Short-form editor for founder story reels", "Add Color Media partner", "Remote", "freelance", "$1,200-$2,000/mo", "Need a tasteful editor for weekly founder reels, quote cuts, and event recap clips. Premium, minimal, not overproduced.", "Send three vertical edits and turnaround time."],
+  ["opportunity", "Featured member spotlight submissions", "ABLE1Self editorial", "Digital", "other", "Audience feature", "Collecting member stories for a future spotlight series: what you are building, your ABLE stage, and the decision you are making next.", "Submit a 150-word profile note."],
+] as const;
 
 async function member(request: Request) {
   const session = await requireSession(request);
@@ -40,9 +49,40 @@ function failure(error: unknown) {
   );
 }
 
+async function seedResources(memberId: number) {
+  const db = getD1();
+  const existing = await db
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM member_resources
+       WHERE member_id = ? AND title IN (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(memberId, ...seededResources.map((resource) => resource[1]))
+    .first<{ count: number }>();
+  if ((existing?.count ?? 0) >= seededResources.length) return;
+  const now = new Date().toISOString();
+  for (const resource of seededResources) {
+    const duplicate = await db
+      .prepare("SELECT id FROM member_resources WHERE member_id = ? AND title = ?")
+      .bind(memberId, resource[1])
+      .first();
+    if (duplicate) continue;
+    await db
+      .prepare(
+        `INSERT INTO member_resources
+         (member_id, resource_type, title, organization, location, engagement,
+          compensation, summary, contact, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
+      )
+      .bind(memberId, ...resource, now, now)
+      .run();
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const profile = await member(request);
+    await seedResources(profile.id);
     const db = getD1();
     const [resources, captures] = await Promise.all([
       db
@@ -116,7 +156,7 @@ export async function POST(request: Request) {
           now,
         )
         .run();
-    } else if (payload.action === "capture") {
+    } else if (payload.action === "capture" || payload.action === "apply") {
       const resourceId = Number(payload.resourceId);
       if (!Number.isInteger(resourceId)) throw new Error("Choose a valid resource.");
       const resource = await db
@@ -127,13 +167,13 @@ export async function POST(request: Request) {
       await db
         .prepare(
           `INSERT INTO resource_captures (resource_id, member_id, note, status, created_at, updated_at)
-           VALUES (?, ?, ?, 'saved', ?, ?)
+           VALUES (?, ?, ?, ?, ?, ?)
            ON CONFLICT(resource_id, member_id) DO UPDATE SET
              note = excluded.note,
-             status = 'saved',
+             status = excluded.status,
              updated_at = excluded.updated_at`,
         )
-        .bind(resourceId, profile.id, clean(payload.note, 500), now, now)
+        .bind(resourceId, profile.id, clean(payload.note, 500), payload.action === "apply" ? "applied" : "saved", now, now)
         .run();
     } else {
       throw new Error("Unknown resource action.");

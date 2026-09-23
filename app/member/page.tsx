@@ -32,7 +32,7 @@ import { scoreBrandLedger } from "../../lib/brand-ledger";
 import { scoreBrandSignal } from "../../lib/brand-signal";
 import { isAnswered, personalityResult } from "../../lib/personality";
 import { PersonalityAssessment, PersonalitySummary } from './personality-assessment';
-import { ArrowLeft, ArrowRight, Bell, BookOpen, BookmarkPlus, Briefcase, House, LogOut, Menu, MessageCircle, MessagesSquare, Plus, Printer, Search, Settings2, SlidersHorizontal, Sparkles, Target, UserRound, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeDollarSign, Bell, BookOpen, BookmarkCheck, BookmarkPlus, Bot, Briefcase, Building2, Handshake, House, LogOut, Menu, MessageCircle, MessagesSquare, Plus, Printer, Search, Send, Settings2, SlidersHorizontal, Target, UserRound, X } from 'lucide-react';
 
 type PortalView =
   | "overview"
@@ -169,7 +169,7 @@ const navigation: Array<{
   { id: "settings", label: "Settings", symbol: "⌘" },
 ];
 
-const navigationIcons = { overview: House, program: BookOpen, profile: UserRound, plan: Target, guide: Sparkles, resources: Briefcase, community: MessagesSquare, messages: MessageCircle, settings: Settings2 };
+const navigationIcons = { overview: House, program: BookOpen, profile: UserRound, plan: Target, guide: Bot, resources: Briefcase, community: MessagesSquare, messages: MessageCircle, settings: Settings2 };
 
 function needsReview(module: ProgramModule, data: MemberData) {
   return data.progress.some(item => item.module_key === module.key && item.status === 'complete') && module.questions.some(question => question.required && !isAnswered(question.key, data.responses.find(response => response.question_key === question.key)?.answer));
@@ -1465,16 +1465,6 @@ type ResourceCapture = {
   updated_at: string;
 };
 
-const demoResources: ResourceItem[] = [
-  { id: -1, member_id: -1, resource_type: "hiring", title: "Brand identity designer for boutique launch", organization: "North House Studio", location: "Remote / Atlanta", engagement: "freelance", compensation: "$3,500-$6,000", summary: "Looking for a designer who can create a clean launch identity, social templates, and a simple usage guide for a premium lifestyle concept.", contact: "Submit portfolio and two relevant case studies.", status: "open", author_name: "Shawn Daniels", created_at: "2026-09-22T15:00:00Z", capture_count: 8 },
-  { id: -2, member_id: -2, resource_type: "offer", title: "One-day content direction intensive", organization: "ABLE member offer", location: "Remote", engagement: "service", compensation: "$750 member rate", summary: "A focused strategy day for founders who need content pillars, shoot direction, and a practical 30-day capture list before a campaign.", contact: "Capture this resource and note your launch date.", status: "open", author_name: "Maya Ellis", created_at: "2026-09-21T19:30:00Z", capture_count: 5 },
-  { id: -3, member_id: -3, resource_type: "opportunity", title: "Pop-up vendor table at creative wellness market", organization: "Sunday House Market", location: "Charlotte, NC", engagement: "collaboration", compensation: "Revenue share / vendor split", summary: "Two tables open for fashion, grooming, print, or personal brand products at an invite-only wellness and creative market.", contact: "Send product photos and expected setup needs.", status: "open", author_name: "Ari Coleman", created_at: "2026-09-20T17:10:00Z", capture_count: 11 },
-  { id: -4, member_id: -4, resource_type: "hiring", title: "Part-time operations assistant for fashion client work", organization: "Private studio", location: "New York / Hybrid", engagement: "part-time", compensation: "$28-$40/hr", summary: "Support fittings, client follow-up, sample tracking, appointment prep, and vendor communication for a designer-led studio.", contact: "Reply with availability and operations background.", status: "open", author_name: "Shawn Daniels", created_at: "2026-09-19T14:45:00Z", capture_count: 4 },
-  { id: -5, member_id: -5, resource_type: "offer", title: "Legal setup checklist review", organization: "Member professional service", location: "Remote", engagement: "service", compensation: "$300 fixed", summary: "Review LLC, EIN, trademark, insurance, contracts, and payment setup. Built for early founders who need the basics checked without extra noise.", contact: "Capture and list what you already have.", status: "open", author_name: "Jordan C.", created_at: "2026-09-18T21:00:00Z", capture_count: 9 },
-  { id: -6, member_id: -6, resource_type: "hiring", title: "Short-form editor for founder story reels", organization: "Add Color Media partner", location: "Remote", engagement: "freelance", compensation: "$1,200-$2,000/mo", summary: "Need a tasteful editor for weekly founder reels, quote cuts, and event recap clips. Premium, minimal, not overproduced.", contact: "Send three vertical edits and turnaround time.", status: "open", author_name: "Amechi", created_at: "2026-09-17T18:20:00Z", capture_count: 13 },
-  { id: -7, member_id: -7, resource_type: "opportunity", title: "Featured member spotlight submissions", organization: "ABLE1Self editorial", location: "Digital", engagement: "other", compensation: "Audience feature", summary: "Collecting member stories for a future spotlight series: what you are building, your ABLE stage, and the decision you are making next.", contact: "Save this and draft a 150-word profile note.", status: "open", author_name: "ABLE1Self", created_at: "2026-09-16T16:05:00Z", capture_count: 7 },
-];
-
 const demoMessages: MemberData["messages"] = [
   { id: -1, sender: "partner", body: "Quick check-in: what is the one move you said you would make before Friday?", created_at: "2026-09-23T15:20:00Z" },
   { id: -2, sender: "member", body: "I’m tightening the offer page and choosing the first paid audience instead of trying to speak to everyone.", created_at: "2026-09-23T15:26:00Z" },
@@ -1493,10 +1483,10 @@ function Resources() {
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [demoCaptures, setDemoCaptures] = useState<ResourceCapture[]>([]);
-  const renderedResources = resources.length ? resources : demoResources;
-  const renderedCaptures = resources.length ? captures : demoCaptures;
-  const capturedIds = new Set(renderedCaptures.map((capture) => capture.resource_id));
+  const [selected, setSelected] = useState<ResourceItem | null>(null);
+  const [actionNote, setActionNote] = useState("");
+  const capturedIds = new Set(captures.map((capture) => capture.resource_id));
+  const appliedIds = new Set(captures.filter((capture) => capture.status === "applied").map((capture) => capture.resource_id));
 
   async function loadResources() {
     const response = await fetch("/api/resources", { cache: "no-store" });
@@ -1515,7 +1505,7 @@ function Resources() {
     loadResources().catch((error) => setNotice(error instanceof Error ? error.message : "Unable to load resources."));
   }, []);
 
-  const visible = renderedResources.filter((resource) => {
+  const visible = resources.filter((resource) => {
     const matchesFilter = filter === "all" || resource.resource_type === filter || resource.engagement === filter;
     const haystack = `${resource.title} ${resource.organization} ${resource.location} ${resource.summary}`.toLowerCase();
     return matchesFilter && haystack.includes(query.trim().toLowerCase());
@@ -1555,34 +1545,37 @@ function Resources() {
     }
   }
 
-  async function capture(resource: ResourceItem) {
-    const note = window.prompt("Add a private note for this resource.", "");
-    if (note === null) return;
-    if (resource.id < 0) {
-      setDemoCaptures((items) => [
-        { id: Date.now() * -1, resource_id: resource.id, note, status: "saved", updated_at: new Date().toISOString() },
-        ...items.filter((item) => item.resource_id !== resource.id),
-      ]);
-      setNotice("Demo resource saved to your follow-up list.");
-      return;
-    }
+  async function saveResource(resource: ResourceItem, status: "capture" | "apply", note = "") {
     setBusy(true);
     setNotice("");
     try {
       const response = await fetch("/api/resources", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "capture", resourceId: resource.id, note }),
+        body: JSON.stringify({ action: status, resourceId: resource.id, note }),
       });
       const result = (await response.json()) as { ok?: boolean; error?: string };
-      if (!response.ok || !result.ok) throw new Error(result.error ?? "Unable to save this resource.");
-      setNotice("Resource saved to your follow-up list.");
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "Unable to update this resource.");
+      setNotice(status === "apply" ? "Interest submitted and saved to your profile." : "Resource captured to your profile.");
       await loadResources();
+      if (status === "apply") setSelected(null);
+      setActionNote("");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Unable to save this resource.");
+      setNotice(error instanceof Error ? error.message : "Unable to update this resource.");
     } finally {
       setBusy(false);
     }
+  }
+
+  function resourceIcon(resource: ResourceItem) {
+    if (resource.resource_type === "offer") return Handshake;
+    if (resource.compensation) return BadgeDollarSign;
+    if (resource.resource_type === "opportunity") return Building2;
+    return Briefcase;
+  }
+
+  function resourceLabel(resource: ResourceItem) {
+    return resource.resource_type === "hiring" ? "Hiring" : resource.resource_type === "offer" ? "Offer" : "Opportunity";
   }
 
   const filters = [
@@ -1681,12 +1674,26 @@ function Resources() {
       <section className="resources-layout">
         <div className="resource-list">
           <header><strong>{visible.length}</strong><span>resources</span></header>
-          {visible.map((resource) => (
-            <article className="resource-card" key={resource.id}>
-              <div className="resource-icon"><Briefcase size={20} /></div>
+          {visible.map((resource) => {
+            const Icon = resourceIcon(resource);
+            return (
+            <article
+              className="resource-card"
+              key={resource.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelected(resource)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelected(resource);
+                }
+              }}
+            >
+              <div className={`resource-icon ${resource.resource_type}`}><Icon size={20} /></div>
               <div>
                 <div className="resource-card-head">
-                  <span>{resource.resource_type === "hiring" ? "Hiring" : resource.resource_type === "offer" ? "Offer" : "Opportunity"}</span>
+                  <span>{resourceLabel(resource)}</span>
                   <small>{formatDate(resource.created_at)}</small>
                 </div>
                 <h2>{resource.title}</h2>
@@ -1699,23 +1706,24 @@ function Resources() {
                 <p>{resource.summary}</p>
                 {resource.contact && <small>Next step: {resource.contact}</small>}
               </div>
-              <button disabled={busy} type="button" onClick={() => capture(resource)}>
-                <BookmarkPlus size={17} />
-                {capturedIds.has(resource.id) ? "Saved" : "Capture"}
+              <button disabled={busy} type="button" onClick={(event) => { event.stopPropagation(); void saveResource(resource, "capture", "Captured from the resource board."); }}>
+                {capturedIds.has(resource.id) ? <BookmarkCheck size={17} /> : <BookmarkPlus size={17} />}
+                {appliedIds.has(resource.id) ? "Submitted" : capturedIds.has(resource.id) ? "Saved" : "Capture"}
               </button>
             </article>
-          ))}
+          );})}
           {!visible.length && <p className="empty-state">No matching resources yet.</p>}
         </div>
 
         <aside className="resource-captures">
           <span>SAVED</span>
           <h2>Captured resources</h2>
-          {renderedCaptures.length ? renderedCaptures.slice(0, 6).map((capture) => {
-            const resource = renderedResources.find((item) => item.id === capture.resource_id);
+          {captures.length ? captures.slice(0, 6).map((capture) => {
+            const resource = resources.find((item) => item.id === capture.resource_id);
             return (
               <article key={capture.id}>
                 <strong>{resource?.title ?? "Saved resource"}</strong>
+                <em>{capture.status === "applied" ? "Interest submitted" : "Captured"}</em>
                 {capture.note && <p>{capture.note}</p>}
                 <small>{formatDate(capture.updated_at)}</small>
               </article>
@@ -1723,6 +1731,40 @@ function Resources() {
           }) : <p>Save a resource to build your private follow-up list.</p>}
         </aside>
       </section>
+
+      {selected && (
+        <div className="resource-modal-backdrop" role="presentation" onClick={() => setSelected(null)}>
+          <section className="resource-modal" role="dialog" aria-modal="true" aria-labelledby="resource-modal-title" onClick={(event) => event.stopPropagation()}>
+            <button className="resource-modal-close" type="button" aria-label="Close resource details" onClick={() => setSelected(null)}><X size={18} /></button>
+            <div className="resource-modal-meta">
+              <span>{resourceLabel(selected)}</span>
+              <small>{formatDate(selected.created_at)}</small>
+            </div>
+            <h2 id="resource-modal-title">{selected.title}</h2>
+            <p className="resource-modal-org">{[selected.organization, selected.location].filter(Boolean).join(" · ") || selected.author_name}</p>
+            <div className="resource-tags">
+              {selected.engagement && <span>{selected.engagement.replace("-", " ")}</span>}
+              {selected.compensation && <strong>{selected.compensation}</strong>}
+              <i>{selected.capture_count} saved</i>
+            </div>
+            <p>{selected.summary}</p>
+            {selected.contact && <div className="resource-next-step"><strong>Next step</strong><p>{selected.contact}</p></div>}
+            <label className="resource-interest-note">
+              <span>SUBMISSION NOTE</span>
+              <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} placeholder="Add portfolio link, availability, what you can offer, or why this fits your profile." />
+            </label>
+            <div className="resource-modal-actions">
+              <button type="button" disabled={busy} onClick={() => void saveResource(selected, "capture", actionNote || "Captured from the resource detail view.")}>
+                <BookmarkPlus size={17} /> Capture to profile
+              </button>
+              <button type="button" disabled={busy} onClick={() => void saveResource(selected, "apply", actionNote || "Interested. Please follow up with next steps.")}>
+                <Send size={17} /> Submit interest
+              </button>
+            </div>
+            <small className="resource-disclaimer">Able1Self saves your interest and note to your profile. Members are still responsible for verifying fit, payment terms, eligibility, and any final agreement directly.</small>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
