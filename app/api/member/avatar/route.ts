@@ -19,9 +19,9 @@ export async function GET(request:Request) {
 export async function POST(request:Request) {
   try {
     const id=await owner(request);
-    if(Number(request.headers.get('content-length'))>3*1024*1024)throw new Error('The image is too large.');
+    if(Number(request.headers.get('content-length'))>6*1024*1024)throw new Error('The image is too large.');
     const file=(await request.formData()).get('photo');
-    if(!(file instanceof File)||file.size>2*1024*1024||file.size<12)throw new Error('Choose an image smaller than 2 MB.');
+    if(!(file instanceof File)||file.size>5*1024*1024||file.size<12)throw new Error('Choose an image smaller than 5 MB.');
     const bytes=new Uint8Array(await file.arrayBuffer());
     const png=bytes.slice(0,8).every((b,i)=>b===[137,80,78,71,13,10,26,10][i]);
     const jpg=bytes[0]===255&&bytes[1]===216&&bytes[2]===255;

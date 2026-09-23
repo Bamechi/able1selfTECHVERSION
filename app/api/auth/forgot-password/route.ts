@@ -1,3 +1,7 @@
+import { createPasswordResetToken } from "../../../../lib/account-store";
+import { sendPasswordResetEmail } from "../../../../lib/email";
+import { getRuntimeEnv } from "../../../../lib/runtime";
+
 export async function POST(request: Request) {
   const payload = (await request.json()) as { email?: string };
   const email = payload.email?.trim() ?? "";
@@ -9,9 +13,26 @@ export async function POST(request: Request) {
     );
   }
 
+  try {
+    const reset = await createPasswordResetToken(email);
+    if (reset) {
+      const origin =
+        getRuntimeEnv()?.APP_ORIGIN?.trim() || new URL(request.url).origin;
+      await sendPasswordResetEmail({
+        to: reset.email,
+        name: reset.name,
+        resetUrl: `${origin}/reset-password#access_token=${encodeURIComponent(reset.token)}`,
+      });
+    }
+  } catch {
+    return Response.json(
+      { ok: false, error: "Unable to send reset instructions right now." },
+      { status: 503 },
+    );
+  }
+
   return Response.json({
     ok: true,
-    message:
-      "If that account exists, the Able1Self team will send secure reset instructions.",
+    message: "If that account exists, secure reset instructions will be sent.",
   });
 }

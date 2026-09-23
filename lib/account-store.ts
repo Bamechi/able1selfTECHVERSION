@@ -1,5 +1,11 @@
 import { displayNameFromEmail } from "./auth-accounts";
-import { digestInviteCode, hashPassword, verifyPassword } from "./password-auth";
+import {
+  digestInviteCode,
+  digestResetToken,
+  generateResetToken,
+  hashPassword,
+  verifyPassword,
+} from "./password-auth";
 import { getD1 } from "./runtime";
 
 export type MemberRole = "member" | "admin";
@@ -26,6 +32,12 @@ type InviteRow = {
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+export function isCompedTesterEmail(email: string) {
+  return ["amechi@addcolormedia.com", "shawndaniels2015@gmail.com"].includes(
+    normalizeEmail(email),
+  );
 }
 
 export async function activeAccountForEmail(email: string) {
@@ -128,4 +140,90 @@ export async function redeemInvite(input: {
   ]);
 
   return { email, name, role: invite.role };
+}
+
+export async function createPasswordResetToken(emailInput: string) {
+  const account = await activeAccountForEmail(emailInput);
+  if (!account) return null;
+
+  const email = normalizeEmail(account.email);
+  const token = generateResetToken();
+  const tokenHash = await digestResetToken(token);
+  const now = new Date();
+  const timestamp = now.toISOString();
+  const expiresAt = new Date(now.getTime() + 1000 * 60 * 60).toISOString();
+  const db = getD1();
+
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE password_reset_tokens
+         SET used_at = ?
+         WHERE email = ? AND used_at IS NULL`,
+      )
+      .bind(timestamp, email),
+    db
+      .prepare(
+        `INSERT INTO password_reset_tokens
+         (email, token_hash, expires_at, created_at)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .bind(email, tokenHash, expiresAt, timestamp),
+  ]);
+
+  return { email, name: account.display_name, token, expiresAt };
+}
+
+export async function resetPasswordWithToken(token: string, password: string) {
+  const tokenHash = await digestResetToken(token);
+  const now = new Date().toISOString();
+  const db = getD1();
+  const row = await db
+    .prepare(
+      `SELECT email
+       FROM password_reset_tokens
+       WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?`,
+    )
+    .bind(tokenHash, now)
+    .first<{ email: string }>();
+
+  if (!row) throw new Error("This password reset link is invalid or expired.");
+
+  const account = await activeAccountForEmail(row.email);
+  if (!account) throw new Error("This password reset link is invalid or expired.");
+
+  const passwordRecord = await hashPassword(password);
+  const timestamp = new Date().toISOString();
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE member_accounts
+         SET password_hash = ?,
+             password_salt = ?,
+             password_iterations = ?,
+             force_password_reset = 0,
+             updated_at = ?
+         WHERE email = ? AND status = 'active'`,
+      )
+      .bind(
+        passwordRecord.hash,
+        passwordRecord.salt,
+        passwordRecord.iterations,
+        timestamp,
+        normalizeEmail(row.email),
+      ),
+    db
+      .prepare(
+        `UPDATE password_reset_tokens
+         SET used_at = ?
+         WHERE token_hash = ?`,
+      )
+      .bind(timestamp, tokenHash),
+  ]);
+
+  return {
+    email: account.email,
+    name: account.display_name,
+    role: account.role,
+  };
 }

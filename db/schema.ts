@@ -65,6 +65,22 @@ export const inviteCodes = sqliteTable(
   ],
 );
 
+export const passwordResetTokens = sqliteTable(
+  "password_reset_tokens",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: text("expires_at").notNull(),
+    usedAt: text("used_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("idx_password_reset_tokens_email").on(table.email),
+    index("idx_password_reset_tokens_expiry").on(table.expiresAt),
+  ],
+);
+
 export const moduleProgress = sqliteTable(
   "module_progress",
   {

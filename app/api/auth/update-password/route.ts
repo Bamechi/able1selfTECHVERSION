@@ -1,5 +1,5 @@
 import { createSessionCookie } from "../../../../lib/auth-session";
-import { updateSupabasePassword } from "../../../../lib/supabase-auth";
+import { resetPasswordWithToken } from "../../../../lib/account-store";
 
 export async function POST(request: Request) {
   const payload = (await request.json()) as {
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     );
   }
   try {
-    const account = await updateSupabasePassword(
+    const account = await resetPasswordWithToken(
       payload.accessToken,
       payload.password,
     );
@@ -39,4 +39,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

@@ -76,3 +76,15 @@ export async function digestInviteCode(code: string) {
   );
   return encode(new Uint8Array(digest));
 }
+
+export function generateResetToken() {
+  return encode(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+export async function digestResetToken(token: string) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(token.trim()),
+  );
+  return encode(new Uint8Array(digest));
+}

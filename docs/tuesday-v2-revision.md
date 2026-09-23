@@ -9,6 +9,8 @@
 - Actual synthetic-account screenshots for the profile and messaging feature displays, with desktop window framing and generous gallery spacing.
 - Larger community biography and richer messaging/composer treatment.
 - AI context now includes derived signs, numerology meaning, personality summary, brand, goals, and history. No live model is configured: an owner-provided OPENAI_API_KEY is still required. No preset response is presented as live AI.
+- Public signup remains invite/payment controlled. `amechi@addcolormedia.com` and `shawndaniels2015@gmail.com` are treated as comped tester accounts so the app can be tested before paid membership is enabled.
+- Password reset now uses one-hour reset tokens and a backend email provider key (`RESEND_API_KEY`). The OpenAI key and email key must live in Sites environment variables, never in GitHub or browser code.
 
 ## Home / Program Decision
 Kept separate as requested. Combining them later is reasonable: Program can lead with overall progress and next action, then show the four stages, profile, and target plan below. That would eliminate the duplicate overview without changing questionnaire routing.
