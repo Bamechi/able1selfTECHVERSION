@@ -5,6 +5,10 @@
   "outputDirectory": "public",
   "rewrites": [
     {
+      "source": "/",
+      "destination": "https://able1self-journey.b-amechi.chatgpt.site/"
+    },
+    {
       "source": "/:path*",
       "destination": "https://able1self-journey.b-amechi.chatgpt.site/:path*"
     }
