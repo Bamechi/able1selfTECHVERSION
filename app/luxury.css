@@ -76,6 +76,8 @@ button:active:not(:disabled),.button:active { transform:translateY(1px) scale(.9
 .public-site .founder-portrait::after { display:none; }
 .public-site .founder-portrait img { filter:grayscale(1); }
 .public-site .founder-signal > strong,.public-site .founder-copy blockquote { color:var(--text); }
+.public-site .founder-text p,
+.public-site .founder-text p:last-child { color:var(--muted); }
 .public-site .founder-signal > span,.public-site .founding-note p,.public-site .payment-note { color:var(--muted); font-size:14px; }
 .public-site .founding-note strong { color:var(--text); }
 .public-site .price-card.featured { background:var(--surface); box-shadow:var(--shadow); border-color:var(--muted); }
