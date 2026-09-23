@@ -1465,6 +1465,26 @@ type ResourceCapture = {
   updated_at: string;
 };
 
+const demoResources: ResourceItem[] = [
+  { id: -1, member_id: -1, resource_type: "hiring", title: "Brand identity designer for boutique launch", organization: "North House Studio", location: "Remote / Atlanta", engagement: "freelance", compensation: "$3,500-$6,000", summary: "Looking for a designer who can create a clean launch identity, social templates, and a simple usage guide for a premium lifestyle concept.", contact: "Submit portfolio and two relevant case studies.", status: "open", author_name: "Shawn Daniels", created_at: "2026-09-22T15:00:00Z", capture_count: 8 },
+  { id: -2, member_id: -2, resource_type: "offer", title: "One-day content direction intensive", organization: "ABLE member offer", location: "Remote", engagement: "service", compensation: "$750 member rate", summary: "A focused strategy day for founders who need content pillars, shoot direction, and a practical 30-day capture list before a campaign.", contact: "Capture this resource and note your launch date.", status: "open", author_name: "Maya Ellis", created_at: "2026-09-21T19:30:00Z", capture_count: 5 },
+  { id: -3, member_id: -3, resource_type: "opportunity", title: "Pop-up vendor table at creative wellness market", organization: "Sunday House Market", location: "Charlotte, NC", engagement: "collaboration", compensation: "Revenue share / vendor split", summary: "Two tables open for fashion, grooming, print, or personal brand products at an invite-only wellness and creative market.", contact: "Send product photos and expected setup needs.", status: "open", author_name: "Ari Coleman", created_at: "2026-09-20T17:10:00Z", capture_count: 11 },
+  { id: -4, member_id: -4, resource_type: "hiring", title: "Part-time operations assistant for fashion client work", organization: "Private studio", location: "New York / Hybrid", engagement: "part-time", compensation: "$28-$40/hr", summary: "Support fittings, client follow-up, sample tracking, appointment prep, and vendor communication for a designer-led studio.", contact: "Reply with availability and operations background.", status: "open", author_name: "Shawn Daniels", created_at: "2026-09-19T14:45:00Z", capture_count: 4 },
+  { id: -5, member_id: -5, resource_type: "offer", title: "Legal setup checklist review", organization: "Member professional service", location: "Remote", engagement: "service", compensation: "$300 fixed", summary: "Review LLC, EIN, trademark, insurance, contracts, and payment setup. Built for early founders who need the basics checked without extra noise.", contact: "Capture and list what you already have.", status: "open", author_name: "Jordan C.", created_at: "2026-09-18T21:00:00Z", capture_count: 9 },
+  { id: -6, member_id: -6, resource_type: "hiring", title: "Short-form editor for founder story reels", organization: "Add Color Media partner", location: "Remote", engagement: "freelance", compensation: "$1,200-$2,000/mo", summary: "Need a tasteful editor for weekly founder reels, quote cuts, and event recap clips. Premium, minimal, not overproduced.", contact: "Send three vertical edits and turnaround time.", status: "open", author_name: "Amechi", created_at: "2026-09-17T18:20:00Z", capture_count: 13 },
+  { id: -7, member_id: -7, resource_type: "opportunity", title: "Featured member spotlight submissions", organization: "ABLE1Self editorial", location: "Digital", engagement: "other", compensation: "Audience feature", summary: "Collecting member stories for a future spotlight series: what you are building, your ABLE stage, and the decision you are making next.", contact: "Save this and draft a 150-word profile note.", status: "open", author_name: "ABLE1Self", created_at: "2026-09-16T16:05:00Z", capture_count: 7 },
+];
+
+const demoMessages: MemberData["messages"] = [
+  { id: -1, sender: "partner", body: "Quick check-in: what is the one move you said you would make before Friday?", created_at: "2026-09-23T15:20:00Z" },
+  { id: -2, sender: "member", body: "I’m tightening the offer page and choosing the first paid audience instead of trying to speak to everyone.", created_at: "2026-09-23T15:26:00Z" },
+  { id: -3, sender: "partner", body: "Good. Make the audience specific enough that the next action is obvious. Who is the buyer?", created_at: "2026-09-23T15:31:00Z" },
+  { id: -4, sender: "member", body: "Independent designers who have taste and demand but no repeatable client system yet.", created_at: "2026-09-23T15:40:00Z" },
+  { id: -5, sender: "partner", body: "That is clearer. Add one proof point and one constraint. What makes it believable, and what are you not offering?", created_at: "2026-09-23T15:48:00Z" },
+  { id: -6, sender: "member", body: "Proof: the last three clients already asked for the same structure. Constraint: not doing general branding, only the client-to-offer system.", created_at: "2026-09-23T16:02:00Z" },
+  { id: -7, sender: "partner", body: "Lock that in. Your next message should invite one person into that exact outcome.", created_at: "2026-09-23T16:15:00Z" },
+];
+
 function Resources() {
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [captures, setCaptures] = useState<ResourceCapture[]>([]);
@@ -1473,7 +1493,10 @@ function Resources() {
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const capturedIds = new Set(captures.map((capture) => capture.resource_id));
+  const [demoCaptures, setDemoCaptures] = useState<ResourceCapture[]>([]);
+  const renderedResources = resources.length ? resources : demoResources;
+  const renderedCaptures = resources.length ? captures : demoCaptures;
+  const capturedIds = new Set(renderedCaptures.map((capture) => capture.resource_id));
 
   async function loadResources() {
     const response = await fetch("/api/resources", { cache: "no-store" });
@@ -1492,7 +1515,7 @@ function Resources() {
     loadResources().catch((error) => setNotice(error instanceof Error ? error.message : "Unable to load resources."));
   }, []);
 
-  const visible = resources.filter((resource) => {
+  const visible = renderedResources.filter((resource) => {
     const matchesFilter = filter === "all" || resource.resource_type === filter || resource.engagement === filter;
     const haystack = `${resource.title} ${resource.organization} ${resource.location} ${resource.summary}`.toLowerCase();
     return matchesFilter && haystack.includes(query.trim().toLowerCase());
@@ -1535,6 +1558,14 @@ function Resources() {
   async function capture(resource: ResourceItem) {
     const note = window.prompt("Add a private note for this resource.", "");
     if (note === null) return;
+    if (resource.id < 0) {
+      setDemoCaptures((items) => [
+        { id: Date.now() * -1, resource_id: resource.id, note, status: "saved", updated_at: new Date().toISOString() },
+        ...items.filter((item) => item.resource_id !== resource.id),
+      ]);
+      setNotice("Demo resource saved to your follow-up list.");
+      return;
+    }
     setBusy(true);
     setNotice("");
     try {
@@ -1680,8 +1711,8 @@ function Resources() {
         <aside className="resource-captures">
           <span>SAVED</span>
           <h2>Captured resources</h2>
-          {captures.length ? captures.slice(0, 6).map((capture) => {
-            const resource = resources.find((item) => item.id === capture.resource_id);
+          {renderedCaptures.length ? renderedCaptures.slice(0, 6).map((capture) => {
+            const resource = renderedResources.find((item) => item.id === capture.resource_id);
             return (
               <article key={capture.id}>
                 <strong>{resource?.title ?? "Saved resource"}</strong>
@@ -2293,6 +2324,7 @@ function Messages({
   mutate: (payload: Record<string, unknown>) => Promise<MemberData | undefined>;
 }) {
   const [message, setMessage] = useState("");
+  const displayedMessages = data.messages.length ? data.messages : demoMessages;
   async function submit(event: FormEvent) {
     event.preventDefault();
     await mutate({ action: "send_message", body: message });
@@ -2325,7 +2357,7 @@ function Messages({
             </p>
           </header>
           <div className="message-thread">
-            {data.messages.map((item) => (
+            {displayedMessages.map((item) => (
               <p className={item.sender === "member" ? "sent" : ""} key={item.id}>
                 <span>{item.body}</span>
                 <small>{formatDate(item.created_at)}</small>

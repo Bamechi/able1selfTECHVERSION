@@ -1,6 +1,17 @@
 "use client";
 import { useRef, useState } from 'react';
 import { Camera, Trash2, UserRound } from 'lucide-react';
+
+async function responseError(response: Response, fallback: string) {
+  const text = await response.text();
+  try {
+    const payload = JSON.parse(text) as { error?: string };
+    return payload.error || fallback;
+  } catch {
+    return text.trim() || fallback;
+  }
+}
+
 export function ProfilePhoto({photoUrl,name,onSaved}:{photoUrl?:string|null;name:string;onSaved:()=>Promise<unknown>}) {
   const input=useRef<HTMLInputElement>(null);
   const [busy,setBusy]=useState(false);
@@ -15,10 +26,9 @@ export function ProfilePhoto({photoUrl,name,onSaved}:{photoUrl?:string|null;name
       const context=canvas.getContext('2d');if(!context)throw new Error('This browser cannot prepare your photo.');
       const side=Math.min(bitmap.width,bitmap.height);
       context.drawImage(bitmap,(bitmap.width-side)/2,(bitmap.height-side)/2,side,side,0,0,512,512);
-      const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('Unable to prepare photo.')),'image/webp',.88));
-      const form=new FormData();form.set('photo',blob,'avatar.webp');
-      const response=await fetch('/api/member/avatar',{method:'POST',body:form});
-      if(!response.ok)throw new Error((await response.json()).error||'Upload failed.');
+      const image=canvas.toDataURL('image/webp',.88);
+      const response=await fetch('/api/member/avatar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({image})});
+      if(!response.ok)throw new Error(await responseError(response,'Upload failed.'));
       await onSaved();setNotice('Profile photo saved.');
     } catch(error){setNotice(error instanceof Error?error.message:'Upload failed.');}
     finally{bitmap?.close();setBusy(false);if(input.current)input.current.value='';}

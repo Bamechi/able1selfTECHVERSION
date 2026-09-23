@@ -1,5 +1,16 @@
 import { requireSession } from '../../../../lib/auth-session';
 import { getD1, getMemberUploads } from '../../../../lib/runtime';
+
+function dataUrlToBytes(dataUrl: string) {
+  const match = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) throw new Error('Only JPG, PNG, and WebP photos are supported.');
+  const binary = atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  if (bytes.byteLength > 5 * 1024 * 1024 || bytes.byteLength < 12) throw new Error('Choose an image smaller than 5 MB.');
+  return { contentType: match[1], bytes };
+}
+
 async function owner(request:Request) {
   const session=await requireSession(request);
   const profile=await getD1().prepare('SELECT id FROM member_profiles WHERE email=?').bind(session.email).first<{id:number}>();
@@ -11,6 +22,10 @@ export async function GET(request:Request) {
   try {
     const id=await owner(request);
     const avatar=await getD1().prepare('SELECT object_key FROM member_avatars WHERE member_id=?').bind(id).first<{object_key:string}>();
+    if (avatar?.object_key.startsWith('data:image/')) {
+      const image = dataUrlToBytes(avatar.object_key);
+      return new Response(image.bytes,{headers:{'content-type':image.contentType,'cache-control':'private, no-store','x-content-type-options':'nosniff'}});
+    }
     const image=avatar?await getMemberUploads().get(avatar.object_key):null;
     if(!image)return new Response(null,{status:404});
     return new Response(image.body,{headers:{'content-type':image.httpMetadata?.contentType||'image/webp','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
@@ -20,6 +35,13 @@ export async function POST(request:Request) {
   try {
     const id=await owner(request);
     if(Number(request.headers.get('content-length'))>6*1024*1024)throw new Error('The image is too large.');
+    if ((request.headers.get('content-type') ?? '').includes('application/json')) {
+      const payload = await request.json() as { image?: unknown };
+      const dataUrl = typeof payload.image === 'string' ? payload.image : '';
+      dataUrlToBytes(dataUrl);
+      await getD1().prepare('INSERT INTO member_avatars(member_id,object_key,updated_at) VALUES(?,?,?) ON CONFLICT(member_id) DO UPDATE SET object_key=excluded.object_key,updated_at=excluded.updated_at').bind(id,dataUrl,new Date().toISOString()).run();
+      return Response.json({ok:true});
+    }
     const file=(await request.formData()).get('photo');
     if(!(file instanceof File)||file.size>5*1024*1024||file.size<12)throw new Error('Choose an image smaller than 5 MB.');
     const bytes=new Uint8Array(await file.arrayBuffer());
@@ -37,5 +59,5 @@ export async function POST(request:Request) {
   }catch(error){return failure(error);}
 }
 export async function DELETE(request:Request) {
-  try {const id=await owner(request);const db=getD1();const old=await db.prepare('SELECT object_key FROM member_avatars WHERE member_id=?').bind(id).first<{object_key:string}>();await db.prepare('DELETE FROM member_avatars WHERE member_id=?').bind(id).run();if(old)await getMemberUploads().delete(old.object_key);return Response.json({ok:true});}catch(error){return failure(error);}
+  try {const id=await owner(request);const db=getD1();const old=await db.prepare('SELECT object_key FROM member_avatars WHERE member_id=?').bind(id).first<{object_key:string}>();await db.prepare('DELETE FROM member_avatars WHERE member_id=?').bind(id).run();if(old&&!old.object_key.startsWith('data:image/'))await getMemberUploads().delete(old.object_key);return Response.json({ok:true});}catch(error){return failure(error);}
 }
