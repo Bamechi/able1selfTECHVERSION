@@ -137,6 +137,7 @@ function IntroSequence() {
       <div className="intro-glass">
         <img src="/able1self-logo.png" alt="" />
       </div>
+      <div className="intro-panels"><span>A / Your identity</span><span>B / Your expression</span><span>L / Your opportunity</span><span>E / Your direction</span></div>
       <p>
         <span>ANALYZE</span>
         <span>BRAND</span>
@@ -353,6 +354,7 @@ export default function Home() {
   const [introVisible, setIntroVisible] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
   const [memberEmail, setMemberEmail] = useState("");
+  const [entering, setEntering] = useState(false);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia(
@@ -360,7 +362,7 @@ export default function Home() {
     ).matches;
     const introTimer = window.setTimeout(
       () => setIntroVisible(false),
-      reducedMotion || sessionStorage.getItem('able-intro-seen') ? 0 : 1400,
+      reducedMotion || sessionStorage.getItem('able-intro-seen') ? 0 : 2800,
     );
     sessionStorage.setItem('able-intro-seen', '1');
     const sessionTimer = window.setTimeout(async () => {
@@ -406,19 +408,25 @@ export default function Home() {
   const selectedStage = stages[activeStage];
 
   function openMemberAccess() {
-    if (memberEmail) window.location.assign("/member");
+    if (memberEmail) enterPortal();
     else setAuthOpen(true);
+  }
+
+  function enterPortal() {
+    setEntering(true);
+    window.setTimeout(()=>window.location.assign('/member'),window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:520);
   }
 
   function authenticate(email: string) {
     setMemberEmail(email);
     setAuthOpen(false);
-    window.location.assign("/member");
+    enterPortal();
   }
 
   return (
     <main className="public-site">
       {introVisible && <IntroSequence />}
+      {entering&&<div className="portal-entry-transition" role="status"><img src="/able1self-logo.png" alt=""/><span>Opening your space</span></div>}
       {authOpen && (
         <AuthModal
           onClose={() => setAuthOpen(false)}
@@ -658,7 +666,7 @@ export default function Home() {
             ))}
           </div>
         </div>
-        <IdentityDashboard />
+        <div className="feature-screen reveal"><div className="screen-toolbar"><span/><span/><span/><small>ABLE1SELF / Personal profile</small></div><img src="/images/feature-profile.png" alt="ABLE member profile with personality, identity, and brand overview" loading="lazy"/></div>
       </section>
 
       <section className="founder-section" id="founder">
@@ -768,11 +776,11 @@ export default function Home() {
               <span>02</span> Direct messages
             </li>
             <li>
-              <span>03</span> Accountability matching
+              <span>03</span> Member introductions
             </li>
           </ul>
         </div>
-        <CommunityPreview />
+        <div className="feature-screen reveal"><div className="screen-toolbar"><span/><span/><span/><small>ABLE1SELF / Messaging</small></div><img src="/images/feature-messaging.png" alt="ABLE member board and member directory" loading="lazy"/></div>
       </section>
 
       <section className="access-section" id="access">

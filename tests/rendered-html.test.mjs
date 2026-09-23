@@ -197,10 +197,10 @@ test("ships the app-like system, real founder image, and accessible fallbacks", 
 
   assert.match(page, /IntersectionObserver/);
   assert.match(page, /IntroSequence/);
-  assert.match(page, /1400/);
+  assert.match(page, /2800/);
   assert.match(page, /useState<Audience>/);
   assert.match(page, /\/api\/auth\/session/);
-  assert.match(page, /window\.location\.assign\("\/member"\)/);
+  assert.match(page, /window\.location\.assign\('\/member'\)/);
   assert.match(memberExperience, /Forgot password\?/);
   assert.match(memberExperience, /The ABLE Program/);
   assert.match(memberExperience, /Personalized Identity Profile/i);
@@ -473,7 +473,8 @@ test("ships the complete portal engine, persistent results, and D1 schema", asyn
   assert.match(memberPage, /CORE IDENTITY/);
   assert.match(memberPage, /AI GUIDE/);
   assert.match(memberPage, /Revisit key questions/);
-  assert.match(memberPage, /PROFILE IN PROGRESS/);
+  assert.doesNotMatch(memberPage, /className="portal-progress-reminder"/);
+  assert.match(memberPage, /<MemberProfile data=\{data\}/);
   assert.equal(
     (programData.match(/scoring: "(?:SCORED|FLAVOR|DERIVED)"/g) ?? []).length,
     76,

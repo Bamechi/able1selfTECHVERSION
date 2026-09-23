@@ -17,6 +17,12 @@ export const memberProfiles = sqliteTable("member_profiles", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const memberAvatars = sqliteTable("member_avatars", {
+  memberId: integer("member_id").primaryKey(),
+  objectKey: text("object_key").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const memberAccounts = sqliteTable(
   "member_accounts",
   {

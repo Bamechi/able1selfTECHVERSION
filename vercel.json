@@ -1,17 +1,13 @@
 {
-  "buildCommand": "next build",
-  "framework": "nextjs",
-  "installCommand": "npm ci",
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "https://able1self-journey.b-amechi.chatgpt.site/",
-      "permanent": false
-    },
+  "buildCommand": "",
+  "framework": null,
+  "installCommand": "",
+  "outputDirectory": "public",
+  "rewrites": [
     {
       "source": "/:path*",
-      "destination": "https://able1self-journey.b-amechi.chatgpt.site/:path*",
-      "permanent": false
+      "destination": "https://able1self-journey.b-amechi.chatgpt.site/:path*"
     }
-  ]
+  ],
+  "headers": [{"source":"/api/:path*","headers":[{"key":"Cache-Control","value":"private, no-store"}]}]
 }

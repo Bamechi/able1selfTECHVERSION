@@ -20,6 +20,7 @@ interface Fetcher {
 
 interface R2ObjectBody {
   body: ReadableStream;
+  httpMetadata?: { contentType?: string };
 }
 
 interface R2Bucket {
@@ -32,6 +33,7 @@ interface R2Bucket {
     },
   ): Promise<unknown>;
   get(key: string): Promise<R2ObjectBody | null>;
+  delete(key: string): Promise<void>;
 }
 
 declare module "cloudflare:workers" {

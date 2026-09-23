@@ -1,6 +1,8 @@
 "use client";
 import { ThemeToggle } from "../theme-toggle";
 import { Messaging } from "./messaging";
+import { MemberProfile } from "./profile-report";
+import { ProfilePhoto } from "./profile-photo";
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
@@ -42,13 +44,14 @@ type PortalView =
   | "messages"
   | "settings";
 
-type MemberData = {
+export type MemberData = {
   role: "member" | "admin";
   profile: {
     email: string;
     displayName: string;
     professionalTitle: string;
     bio: string;
+    avatarUrl?: string | null;
     currentModule: string;
     overallProgress: number;
     completedModules: number;
@@ -1122,7 +1125,7 @@ export default function MemberPage() {
           ))}
         </nav>
         <div className="portal-user">
-          <div>{initials(data.profile.displayName)}</div>
+          <div>{data.profile.avatarUrl ? <img className="member-avatar-image" src={data.profile.avatarUrl} alt="" /> : initials(data.profile.displayName)}</div>
           <p>
             <strong>{data.profile.displayName}</strong>
             <small>{data.profile.email}</small>
@@ -1145,16 +1148,10 @@ export default function MemberPage() {
           </button>
           <div>
             <span className="portal-live-dot" />
-            Progress saved securely
+            <span role="status" aria-live="polite">{saving ? 'Saving your changes...' : 'Progress saved securely'}</span>
           </div>
           <div className="portal-top-actions">
             <ThemeToggle />
-            <button
-              type="button"
-              onClick={() => setActiveModule(currentModule)}
-            >
-              Continue {currentModule.key}
-            </button>
             <button
               type="button"
               onClick={async () => {
@@ -1198,31 +1195,7 @@ export default function MemberPage() {
           </aside>
         )}
 
-        <div className="portal-content">
-          {view !== 'overview' && view !== 'profile' && data.profile.overallProgress < 100 && (
-            <button
-              className="portal-progress-reminder"
-              type="button"
-              onClick={() => openProgramModule(currentModule)}
-            >
-              <span>PROFILE IN PROGRESS</span>
-              <div>
-                <strong>
-                  {data.profile.completedModules === 0
-                    ? `Start with ${currentModule.title}.`
-                    : `Keep going with ${currentModule.title}.`}
-                </strong>
-                <p>
-                  Your next step is ready.
-                </p>
-              </div>
-              <em>
-                {data.profile.completedModules}/{programModules.length} modules complete
-              </em>
-              <b>Continue profile →</b>
-            </button>
-          )}
-
+        <div className="portal-content" key={view}>
           {error && (
             <div className="portal-alert" role="status">
               {error}
@@ -1243,7 +1216,7 @@ export default function MemberPage() {
           {view === "program" && (
             <Program data={data} onOpenModule={openProgramModule} />
           )}
-          {view === "profile" && <Profile data={data} />}
+          {view === "profile" && <MemberProfile data={data} />}
           {view === "plan" && (
             <Plan data={data} saving={saving} mutate={mutate} />
           )}
@@ -1255,7 +1228,7 @@ export default function MemberPage() {
             <Messaging displayName={data.profile.displayName} />
           )}
           {view === "settings" && (
-            <Settings data={data} saving={saving} mutate={mutate} />
+            <Settings data={data} saving={saving} mutate={mutate} onPhotoSaved={loadMember} />
           )}
         </div>
       </section>
@@ -2216,10 +2189,12 @@ function Settings({
   data,
   saving,
   mutate,
+  onPhotoSaved,
 }: {
   data: MemberData;
   saving: boolean;
   mutate: (payload: Record<string, unknown>) => Promise<MemberData | undefined>;
+  onPhotoSaved: () => Promise<void>;
 }) {
   const [displayName, setDisplayName] = useState(data.profile.displayName);
   const [professionalTitle, setProfessionalTitle] = useState(
@@ -2243,6 +2218,7 @@ function Settings({
         <p>Manage the context and signals attached to your member profile.</p>
       </div>
       <div className="settings-stack">
+        <ProfilePhoto photoUrl={data.profile.avatarUrl} name={data.profile.displayName} onSaved={onPhotoSaved} />
         <section>
           <header>
             <span>PROFILE CONTEXT</span>
@@ -2340,7 +2316,6 @@ function Settings({
             {saving ? "Saving…" : "Save notification settings"}
           </button>
         </section>
-        <RetakeKeyQuestions data={data} saving={saving} mutate={mutate} />
         <section className="account-security">
           <header>
             <span>SECURITY</span>

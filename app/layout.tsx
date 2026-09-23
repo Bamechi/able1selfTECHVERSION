@@ -4,6 +4,7 @@ import "./globals.css";
 import "./revision.css";
 import "./portal-minimal.css";
 import "./luxury.css";
+import "./refinement.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();

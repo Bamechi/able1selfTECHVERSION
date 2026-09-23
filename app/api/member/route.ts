@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     return Response.json({
       ok: true,
       data: { ...data, role: session.role },
-    });
+    }, {headers:{'cache-control':'private, no-store'}});
   } catch (error) {
     return errorResponse(error);
   }

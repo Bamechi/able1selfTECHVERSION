@@ -456,6 +456,7 @@ function parseJson<T>(value: string | undefined, fallback: T): T {
 export async function getMemberData(email: string, preferredName?: string) {
   const profile = await ensurePilot(email, preferredName);
   const db = getD1();
+  const avatar = await db.prepare('SELECT updated_at FROM member_avatars WHERE member_id=?').bind(profile.id).first<{updated_at:string}>();
   const embark = await db.prepare("SELECT module_key FROM module_progress WHERE member_id = ? AND stage = 'E' AND status = 'complete'").bind(profile.id).all();
   if (embark.results.length === 3) {
     const generated = await db.prepare("SELECT member_id FROM target_plan_generations WHERE member_id = ?").bind(profile.id).first();
@@ -604,6 +605,7 @@ export async function getMemberData(email: string, preferredName?: string) {
       displayName: profile.display_name,
       professionalTitle: profile.professional_title,
       bio: profile.bio,
+      avatarUrl: avatar ? `/api/member/avatar?v=${encodeURIComponent(avatar.updated_at)}` : null,
       currentModule: current.key,
       overallProgress: Math.round((completed.length / programModules.length) * 100),
       completedModules: completed.length,

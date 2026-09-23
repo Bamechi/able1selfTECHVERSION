@@ -2,6 +2,8 @@ import { requireSession } from '../../../lib/auth-session';
 import { getMemberData } from '../../../lib/member-store';
 import { getD1, getRuntimeEnv } from '../../../lib/runtime';
 import { programModules } from '../../../lib/program-data';
+import { describeLifePath } from '../../../lib/life-paths';
+import { personalityResult } from '../../../lib/personality';
 
 const failure = (error:unknown) => error instanceof Response ? error : Response.json({ok:false,error:error instanceof Error ? error.message : 'The Guide could not respond. Please try again.'},{status:400});
 
@@ -29,9 +31,14 @@ export async function POST(request:Request) {
     if((recent?.count??0)>=20) return Response.json({ok:false,error:'Your Guide limit is 20 questions per hour. Please try again later.'},{status:429});
     const history=await db.prepare("SELECT role,body FROM (SELECT id,role,body FROM guide_messages WHERE member_id=? AND grounded_on_engine_version LIKE 'ai:%' ORDER BY id DESC LIMIT 12) ORDER BY id").bind(data.profile.id).all<{role:string;body:string}>();
     const prompts=Object.fromEntries(programModules.flatMap(module=>module.questions.map(q=>[q.key,q.prompt])));
+    const energy=data.derived?.energy as Record<string,unknown>|undefined;
     const profile={
       responses:data.responses.filter(row=>!['a2_birth','a1_assessment'].includes(row.question_key)).map(row=>({question:prompts[row.question_key]??row.question_key,answer:row.answer})),
       identity:data.identity?.archetype, positioning:data.derived?.brandStatement, targetPlan:data.plan,
+      personality:personalityResult(data.responses.find(row=>row.question_key==='a1_assessment')?.answer),
+      energy:energy?{sunSign:energy.sunSign,moonSign:energy.moonSign,risingSign:energy.risingSign,element:energy.element,lifePath:energy.lifePath}:null,
+      numerology:describeLifePath(typeof energy?.lifePath==='number'?energy.lifePath:null),
+      interpretationNote:'Numerology, astrology, and the independent personality reflection are interpretive lenses, not scientific diagnoses. Connect their themes to the member\'s actual brand, offer, and stated goals without predicting destiny.',
     };
     const model=env.OPENAI_MODEL||'gpt-4.1-mini';
     const response=await fetch('https://api.openai.com/v1/responses',{
