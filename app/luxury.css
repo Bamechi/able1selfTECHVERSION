@@ -311,6 +311,48 @@ progress::-moz-progress-bar { background:linear-gradient(90deg,#5e9b8a,#cee3dd);
 .member-public-profile { padding:24px; background:var(--surface); border:1px solid var(--edge); border-radius:8px; margin-bottom:20px; }
 .member-public-profile h2 { font-size:22px; }
 .member-public-profile p { margin:12px 0; }
+.resources-view { gap:26px; }
+.resource-brief { display:grid;grid-template-columns:220px 1fr;gap:24px;padding:22px 0;border-block:1px solid var(--edge); }
+.resource-brief strong { color:var(--text);font-size:18px; }
+.resource-brief p { margin:0;color:var(--muted);font-size:15px!important; }
+.resource-toolbar { display:grid;grid-template-columns:minmax(260px,1fr) auto auto;gap:14px;align-items:center;padding:16px;border:1px solid var(--edge);border-radius:8px;background:var(--surface);box-shadow:var(--shadow); }
+.resource-search { display:flex;align-items:center;gap:12px;min-height:48px;padding:0 16px;border:1px solid var(--edge);border-radius:999px;background:var(--raised);color:var(--muted); }
+.resource-search input { width:100%;border:0;background:transparent;color:var(--text);font-size:16px;outline:0; }
+.resource-search input::placeholder { color:var(--muted); }
+.resource-filter-tabs { display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end; }
+.resource-filter-tabs button { min-height:42px;padding:0 16px;border:1px solid var(--edge);border-radius:999px;background:transparent;color:var(--muted);font-size:14px; }
+.resource-filter-tabs button.active { background:var(--action);border-color:var(--action);color:var(--action-text); }
+.resource-compose { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;padding:24px;border:1px solid var(--edge);border-radius:8px;background:var(--surface);box-shadow:var(--shadow); }
+.resource-compose label { display:grid;gap:8px;color:var(--muted);font-size:13px!important; }
+.resource-compose label>span { color:var(--muted);font-size:12px!important;text-transform:uppercase;font-family:var(--mono); }
+.resource-compose :is(input,select,textarea) { width:100%;min-height:50px;border:1px solid var(--edge);border-radius:8px;background:var(--raised);color:var(--text);padding:13px 14px;font-size:16px; }
+.resource-compose textarea { min-height:118px;resize:vertical; }
+.resource-compose .resource-wide { grid-column:1/-1; }
+.resource-compose button { justify-self:start;background:var(--action);color:var(--action-text);border:1px solid var(--action);border-radius:999px;padding:13px 22px;font-size:15px; }
+.resources-layout { display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:34px;align-items:start; }
+.resource-list { border:1px solid var(--edge);border-radius:8px;background:var(--surface);overflow:hidden; }
+.resource-list>header { display:flex;align-items:baseline;gap:10px;padding:20px 24px;border-bottom:1px solid var(--edge); }
+.resource-list>header strong { color:var(--text);font-size:28px; }
+.resource-list>header span { color:var(--muted);font-size:14px; }
+.resource-card { display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:22px;padding:28px 24px;border-bottom:1px solid var(--edge); }
+.resource-card:last-child { border-bottom:0; }
+.resource-icon { display:grid;place-items:center;width:52px;height:52px;border:1px solid var(--edge);border-radius:50%;background:var(--raised);color:var(--text); }
+.resource-card-head { display:flex;gap:10px;align-items:center;margin-bottom:8px; }
+.resource-card-head span { color:var(--accent);font-size:13px;font-weight:650;text-transform:uppercase; }
+.resource-card-head small { color:var(--muted);font-size:13px; }
+.resource-card h2 { margin:0;color:var(--text);font-size:23px;line-height:1.25;font-weight:560; }
+.resource-card p { margin:9px 0 0;color:var(--muted);font-size:16px!important; }
+.resource-card small { display:block;margin-top:12px;color:var(--muted);font-size:13px!important; }
+.resource-tags { display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px; }
+.resource-tags span,.resource-tags i { padding:7px 11px;border:1px solid var(--edge);border-radius:999px;background:var(--raised);color:var(--muted);font-style:normal;font-size:13px; }
+.resource-tags strong { color:var(--accent);font-size:15px; }
+.resource-card>button { align-self:center;display:inline-flex;gap:9px;align-items:center;border:1px solid var(--edge);border-radius:999px;background:var(--raised);color:var(--text);padding:11px 16px;font-size:14px; }
+.resource-captures { position:sticky;top:24px;padding:24px;border:1px solid var(--edge);border-radius:8px;background:var(--surface);box-shadow:var(--shadow); }
+.resource-captures>span { color:var(--muted);font-size:12px;font-family:var(--mono); }
+.resource-captures h2 { margin:8px 0 18px;color:var(--text);font-size:22px; }
+.resource-captures article { padding:16px 0;border-top:1px solid var(--edge); }
+.resource-captures strong { color:var(--text);font-size:15px; }
+.resource-captures p,.resource-captures small { color:var(--muted);font-size:13px!important; }
 @keyframes question-enter { from { opacity:0; transform:translateY(18px); filter:blur(3px); } to { opacity:1; transform:none; filter:blur(0); } }
 @media (prefers-reduced-motion:no-preference) { .question-transition,.portal-view-stack,.personality-assessment fieldset { animation:question-enter .38s cubic-bezier(.2,.7,.25,1) both; } .module-player { animation:question-enter .35s ease both; } }
 @media (max-width:1200px) { .public-site .site-header nav { gap:16px; } .public-site .site-header nav a:nth-child(2),.public-site .site-header nav a:nth-child(3) { display:none; } .live-member-portal .portal-content { padding:40px 32px 70px; } .able-stage-nav button { padding:18px 14px; grid-template-columns:36px 1fr; gap:10px; } }
@@ -366,6 +408,12 @@ progress::-moz-progress-bar { background:linear-gradient(90deg,#5e9b8a,#cee3dd);
   .profile-document > header { gap:16px; }
   .profile-document > header h2 { font-size:27px; }
   .member-board { grid-template-columns:1fr; }
+  .resource-brief,.resources-layout,.resource-toolbar,.resource-compose { grid-template-columns:1fr; }
+  .resource-filter-tabs { justify-content:flex-start; }
+  .resource-card { grid-template-columns:42px minmax(0,1fr); }
+  .resource-icon { width:42px;height:42px; }
+  .resource-card>button { grid-column:2;justify-self:start; }
+  .resource-captures { position:static; }
   .member-directory { border:0; border-top:1px solid var(--edge); padding:24px 0 0; }
   .messaging-tabs button { padding:10px 16px; }
   .direct-compose { flex-wrap:wrap; }

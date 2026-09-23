@@ -32,7 +32,7 @@ import { scoreBrandLedger } from "../../lib/brand-ledger";
 import { scoreBrandSignal } from "../../lib/brand-signal";
 import { isAnswered, personalityResult } from "../../lib/personality";
 import { PersonalityAssessment, PersonalitySummary } from './personality-assessment';
-import { ArrowLeft, ArrowRight, Bell, BookOpen, House, LogOut, Menu, MessageCircle, MessagesSquare, Printer, Settings2, Sparkles, Target, UserRound, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, BookmarkPlus, Briefcase, House, LogOut, Menu, MessageCircle, MessagesSquare, Plus, Printer, Search, Settings2, SlidersHorizontal, Sparkles, Target, UserRound, X } from 'lucide-react';
 
 type PortalView =
   | "overview"
@@ -40,6 +40,7 @@ type PortalView =
   | "profile"
   | "plan"
   | "guide"
+  | "resources"
   | "community"
   | "messages"
   | "settings";
@@ -163,11 +164,12 @@ const navigation: Array<{
   { id: "profile", label: "My profile", symbol: "◎" },
   { id: "plan", label: "Target plan", symbol: "↗" },
   { id: "guide", label: "AI Guide", symbol: "◇" },
+  { id: "resources", label: "Resources", symbol: "□" },
   { id: "messages", label: "Messaging", symbol: "↗" },
   { id: "settings", label: "Settings", symbol: "⌘" },
 ];
 
-const navigationIcons = { overview: House, program: BookOpen, profile: UserRound, plan: Target, guide: Sparkles, community: MessagesSquare, messages: MessageCircle, settings: Settings2 };
+const navigationIcons = { overview: House, program: BookOpen, profile: UserRound, plan: Target, guide: Sparkles, resources: Briefcase, community: MessagesSquare, messages: MessageCircle, settings: Settings2 };
 
 function needsReview(module: ProgramModule, data: MemberData) {
   return data.progress.some(item => item.module_key === module.key && item.status === 'complete') && module.questions.some(question => question.required && !isAnswered(question.key, data.responses.find(response => response.question_key === question.key)?.answer));
@@ -1221,6 +1223,7 @@ export default function MemberPage() {
             <Plan data={data} saving={saving} mutate={mutate} />
           )}
           {view === "guide" && <Guide data={data} />}
+          {view === "resources" && <Resources />}
           {view === "community" && (
             <Community data={data} saving={saving} mutate={mutate} />
           )}
@@ -1433,6 +1436,262 @@ function Overview({
           </article>
         ))}
       </div>
+    </div>
+  );
+}
+
+type ResourceItem = {
+  id: number;
+  member_id: number;
+  author_name: string;
+  resource_type: "offer" | "hiring" | "opportunity";
+  title: string;
+  organization: string;
+  location: string;
+  engagement: string;
+  compensation: string;
+  summary: string;
+  contact: string;
+  status: string;
+  created_at: string;
+  capture_count: number;
+};
+
+type ResourceCapture = {
+  id: number;
+  resource_id: number;
+  note: string;
+  status: string;
+  updated_at: string;
+};
+
+function Resources() {
+  const [resources, setResources] = useState<ResourceItem[]>([]);
+  const [captures, setCaptures] = useState<ResourceCapture[]>([]);
+  const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const capturedIds = new Set(captures.map((capture) => capture.resource_id));
+
+  async function loadResources() {
+    const response = await fetch("/api/resources", { cache: "no-store" });
+    const result = (await response.json()) as {
+      ok?: boolean;
+      resources?: ResourceItem[];
+      captures?: ResourceCapture[];
+      error?: string;
+    };
+    if (!response.ok || !result.ok) throw new Error(result.error ?? "Unable to load resources.");
+    setResources(result.resources ?? []);
+    setCaptures(result.captures ?? []);
+  }
+
+  useEffect(() => {
+    loadResources().catch((error) => setNotice(error instanceof Error ? error.message : "Unable to load resources."));
+  }, []);
+
+  const visible = resources.filter((resource) => {
+    const matchesFilter = filter === "all" || resource.resource_type === filter || resource.engagement === filter;
+    const haystack = `${resource.title} ${resource.organization} ${resource.location} ${resource.summary}`.toLowerCase();
+    return matchesFilter && haystack.includes(query.trim().toLowerCase());
+  });
+
+  async function submitResource(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch("/api/resources", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "add",
+          resourceType: form.get("resourceType"),
+          title: form.get("title"),
+          organization: form.get("organization"),
+          location: form.get("location"),
+          engagement: form.get("engagement"),
+          compensation: form.get("compensation"),
+          summary: form.get("summary"),
+          contact: form.get("contact"),
+        }),
+      });
+      const result = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "Unable to add this resource.");
+      event.currentTarget.reset();
+      setAdding(false);
+      setNotice("Resource posted.");
+      await loadResources();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to add this resource.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function capture(resource: ResourceItem) {
+    const note = window.prompt("Add a private note for this resource.", "");
+    if (note === null) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch("/api/resources", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "capture", resourceId: resource.id, note }),
+      });
+      const result = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "Unable to save this resource.");
+      setNotice("Resource saved to your follow-up list.");
+      await loadResources();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to save this resource.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const filters = [
+    ["all", "All"],
+    ["hiring", "Hiring"],
+    ["offer", "Offers"],
+    ["opportunity", "Opportunities"],
+    ["freelance", "Freelance"],
+    ["full-time", "Full-time"],
+  ];
+
+  return (
+    <div className="portal-view-stack resources-view">
+      <div className="portal-page-heading split">
+        <div>
+          <span className="portal-eyebrow">THE MEMBER RESOURCE BOARD</span>
+          <h1>Resources.</h1>
+          <p>Share opportunities, services, and needs with the Able1Self room.</p>
+        </div>
+        <button className="profile-print" type="button" onClick={() => setAdding((value) => !value)}>
+          <Plus size={17} /> Add resource
+        </button>
+      </div>
+
+      <section className="resource-brief">
+        <strong>Member-supplied opportunities.</strong>
+        <p>Able1Self organizes discovery and saved interest. Members are responsible for verifying fit, terms, payment, eligibility, and final agreements before moving forward.</p>
+      </section>
+
+      <section className="resource-toolbar">
+        <div className="resource-search">
+          <Search size={18} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search roles, services, cities, skills..." />
+        </div>
+        <SlidersHorizontal size={18} />
+        <div className="resource-filter-tabs">
+          {filters.map(([key, label]) => (
+            <button className={filter === key ? "active" : ""} key={key} type="button" onClick={() => setFilter(key)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {adding && (
+        <form className="resource-compose" onSubmit={submitResource}>
+          <label>
+            <span>TYPE</span>
+            <select name="resourceType" defaultValue="hiring" required>
+              <option value="hiring">Hiring for a role or project</option>
+              <option value="offer">Offering a product or service</option>
+              <option value="opportunity">Sharing an opportunity</option>
+            </select>
+          </label>
+          <label>
+            <span>TITLE</span>
+            <input name="title" placeholder="Brand designer, launch strategist, venue partner..." required />
+          </label>
+          <label>
+            <span>ORGANIZATION</span>
+            <input name="organization" placeholder="Company, project, or member name" />
+          </label>
+          <label>
+            <span>LOCATION</span>
+            <input name="location" placeholder="Remote, Atlanta, New York, hybrid..." />
+          </label>
+          <label>
+            <span>FORMAT</span>
+            <select name="engagement" defaultValue="freelance">
+              <option value="freelance">Freelance</option>
+              <option value="full-time">Full-time</option>
+              <option value="part-time">Part-time</option>
+              <option value="service">Product or service</option>
+              <option value="collaboration">Collaboration</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>
+            <span>COMPENSATION / VALUE</span>
+            <input name="compensation" placeholder="$2,500-$5,000, revenue share, paid, barter..." />
+          </label>
+          <label className="resource-wide">
+            <span>SUMMARY</span>
+            <textarea name="summary" placeholder="What is available, who it is for, what good fit looks like, and what someone should do next." required />
+          </label>
+          <label className="resource-wide">
+            <span>CONTACT / NEXT STEP</span>
+            <input name="contact" placeholder="Email, site, application link, or instructions" />
+          </label>
+          <button disabled={busy} type="submit">{busy ? "Posting..." : "Post resource"}</button>
+        </form>
+      )}
+
+      {notice && <p className="guide-notice" role="status">{notice}</p>}
+
+      <section className="resources-layout">
+        <div className="resource-list">
+          <header><strong>{visible.length}</strong><span>resources</span></header>
+          {visible.map((resource) => (
+            <article className="resource-card" key={resource.id}>
+              <div className="resource-icon"><Briefcase size={20} /></div>
+              <div>
+                <div className="resource-card-head">
+                  <span>{resource.resource_type === "hiring" ? "Hiring" : resource.resource_type === "offer" ? "Offer" : "Opportunity"}</span>
+                  <small>{formatDate(resource.created_at)}</small>
+                </div>
+                <h2>{resource.title}</h2>
+                <p>{[resource.organization, resource.location].filter(Boolean).join(" · ") || resource.author_name}</p>
+                <div className="resource-tags">
+                  {resource.engagement && <span>{resource.engagement.replace("-", " ")}</span>}
+                  {resource.compensation && <strong>{resource.compensation}</strong>}
+                  <i>{resource.capture_count} saved</i>
+                </div>
+                <p>{resource.summary}</p>
+                {resource.contact && <small>Next step: {resource.contact}</small>}
+              </div>
+              <button disabled={busy} type="button" onClick={() => capture(resource)}>
+                <BookmarkPlus size={17} />
+                {capturedIds.has(resource.id) ? "Saved" : "Capture"}
+              </button>
+            </article>
+          ))}
+          {!visible.length && <p className="empty-state">No matching resources yet.</p>}
+        </div>
+
+        <aside className="resource-captures">
+          <span>SAVED</span>
+          <h2>Captured resources</h2>
+          {captures.length ? captures.slice(0, 6).map((capture) => {
+            const resource = resources.find((item) => item.id === capture.resource_id);
+            return (
+              <article key={capture.id}>
+                <strong>{resource?.title ?? "Saved resource"}</strong>
+                {capture.note && <p>{capture.note}</p>}
+                <small>{formatDate(capture.updated_at)}</small>
+              </article>
+            );
+          }) : <p>Save a resource to build your private follow-up list.</p>}
+        </aside>
+      </section>
     </div>
   );
 }
